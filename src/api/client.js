@@ -1,11 +1,6 @@
-const API_PROXY_PREFIX = import.meta.env.VITE_API_PROXY_PREFIX || "";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const getBaseUrl = () => {
-  if (API_PROXY_PREFIX) {
-    return API_PROXY_PREFIX;
-  }
-
   return API_BASE_URL;
 };
 
