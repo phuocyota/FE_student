@@ -43,14 +43,14 @@ const ExamDashboard = () => {
   // phân trang danh sách lịch sử đề thi 
 
   const [currentPage, setCurrentPage] = useState(1);
-const itemsPerPage = 10;
-const totalPages = Math.ceil(examList.length / itemsPerPage);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(examList.length / itemsPerPage);
 
-const startIndex = (currentPage - 1) * itemsPerPage;
-const currentData = examList.slice(
-  startIndex,
-  startIndex + itemsPerPage
-);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentData = examList.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   return (
     <div className="bg-gray-100 min-h-screen p-4 md:p-8">
@@ -86,77 +86,77 @@ const currentData = examList.slice(
         <div className="grid md:grid-cols-2 gap-8">
 
           {/* ===== LEFT: TABLE ===== */}
-<div>
+          <div>
 
-  <div className="grid grid-cols-4 text-gray-500 font-semibold mb-3">
-  <span>Ngày</span>
-  <span>Tên đề thi</span>
-  <span className="text-right">Điểm</span>
-  <span className="text-right"> </span>  
-</div>
+            <div className="grid grid-cols-4 text-gray-500 font-semibold mb-3">
+              <span>Ngày</span>
+              <span>Tên đề thi</span>
+              <span className="text-right">Điểm</span>
+              <span className="text-right"> </span>
+            </div>
 
-  <div className="space-y-4">
-  {currentData.map((item, index) => (
-    <div
-      key={index}
-      className="grid grid-cols-4 items-center border-b pb-3 gap-2"
-    >
-      {/* Date */}
-      <span>{item.date}</span>
+            <div className="space-y-4">
+              {currentData.map((item, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-4 items-center border-b pb-3 gap-2"
+                >
+                  {/* Date */}
+                  <span>{item.date}</span>
 
-      {/* Title */}
-      <span>{item.title}</span>
+                  {/* Title */}
+                  <span>{item.title}</span>
 
-      {/* Score */}
-      <span className="text-right text-red-600 font-semibold">
-        {item.score.toFixed(2)}
-      </span>
+                  {/* Score */}
+                  <span className="text-right text-red-600 font-semibold">
+                    {item.score.toFixed(2)}
+                  </span>
 
-      {/* PDF Button */}
-      <div className="text-right">
-        <button
-          onClick={() => handleExportPDF(item)}
-          className="bg-green-600 hover:bg-green-700 
+                  {/* PDF Button */}
+                  <div className="text-right">
+                    <button
+                      onClick={() => handleExportPDF(item)}
+                      className="bg-green-600 hover:bg-green-700 
           text-white text-xs px-3 py-1 rounded-full 
           transition"
-        >
-          Xuất PDF
-        </button>
-      </div>
-    </div>
-  ))}
-</div>
+                    >
+                      Xuất PDF
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-  {/* ===== PAGINATION ===== */}
-  <div className="flex justify-center items-center gap-4 mt-6">
+            {/* ===== PAGINATION ===== */}
+            <div className="flex justify-center items-center gap-4 mt-6">
 
-    <button
-      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-      disabled={currentPage === 1}
-      className="w-9 h-9 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition"
-    >
-      ←
-    </button>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="w-9 h-9 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition"
+              >
+                ←
+              </button>
 
-    <span className="text-sm font-medium">
-      Trang {currentPage} / {totalPages}
-    </span>
+              <span className="text-sm font-medium">
+                Trang {currentPage} / {totalPages}
+              </span>
 
-    <button
-      onClick={() =>
-        setCurrentPage((prev) =>
-          Math.min(prev + 1, totalPages)
-        )
-      }
-      disabled={currentPage === totalPages}
-      className="w-9 h-9 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition"
-    >
-      →
-    </button>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) =>
+                    Math.min(prev + 1, totalPages)
+                  )
+                }
+                disabled={currentPage === totalPages}
+                className="w-9 h-9 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition"
+              >
+                →
+              </button>
 
-  </div>
+            </div>
 
-</div>
+          </div>
           {/* ===== RIGHT: CHART ===== */}
           <div className="w-full h-72 md:h-96">
             <h2 className="text-center font-semibold mb-4">Biểu đồ</h2>

@@ -9,6 +9,7 @@ import {
   User,
   ChevronDown,
 } from "lucide-react";
+import { getGrades } from "../../api/grade";
 
 /* ================== DATA ================== */
 const defaultSubjects = {
@@ -75,6 +76,34 @@ const Header = () => {
 
   const [pinned, setPinned] = useState(false);      // giữ mở khi click
   const [selectedGrade, setSelectedGrade] = useState("Lớp 1");
+
+  // api lấy dữ liệu lớp học
+  const [grades, setGrades] = useState([]);
+  useEffect(() => {
+    const fetchGrades = async () => {
+      try {
+        const res = await getGrades();
+
+        const gradeList = res?.data?.data || [];
+
+        // Sắp xếp theo số trong code (K1, K2, K10...)
+        gradeList.sort((a, b) => {
+          const numA = parseInt(a.code.replace("K", ""));
+          const numB = parseInt(b.code.replace("K", ""));
+          return numA - numB;
+        });
+
+
+        setGrades(gradeList);
+      } catch (error) {
+        console.error("Lỗi load grade:", error);
+      }
+    };
+
+    fetchGrades();
+  }, []);
+
+
   /* ====== Helpers ====== */
   const generalData = examData["Giáo dục phổ thông"];
   const subjects = generalData?.[selectedGrade];
@@ -100,6 +129,8 @@ const Header = () => {
   useEffect(() => {
     setUser(localStorage.getItem("user"));
   }, [location]);
+
+  // đăng xuất 
 
   // popup menu bar
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -134,7 +165,7 @@ const Header = () => {
       }
     };
 
-    // ⚠️ dùng click, không dùng mousedown
+    // dùng click, không dùng mousedown
     document.addEventListener("click", handleClickOutsideGeneral);
 
     return () => {
@@ -268,9 +299,18 @@ const Header = () => {
 
                     <div
                       onClick={() => {
+                        // 🔥 Xoá toàn bộ thông tin đăng nhập
+                        localStorage.removeItem("accessToken");
+                        localStorage.removeItem("refreshToken");
+                        localStorage.removeItem("aToken");
                         localStorage.removeItem("user");
+                        localStorage.removeItem("userId");
+
+                        // Đóng menu
                         setShowUserMenu(false);
-                        window.location.href = "/";
+
+                        // Chuyển về login
+                        window.location.href = "/login";
                       }}
                       className="cursor-pointer text-red-500 hover:text-red-600"
                     >
@@ -353,17 +393,17 @@ whitespace-nowrap
                   {/* DESKTOP */}
                   <div className="hidden md:flex">
                     <div className="md:w-80 border-r pr-8">
-                      {Object.keys(generalData).map((grade) => (
+                      {grades.map((grade) => (
                         <div
-                          key={grade}
+                          key={grade.id}
                           onClick={() => setSelectedGrade(grade)}
                           className={`px-4 py-2 rounded-lg cursor-pointer mb-1 transition
-                ${selectedGrade === grade
+      ${selectedGrade?.id === grade.id
                               ? "bg-yellow-500 text-white"
                               : "hover:bg-gray-100"
                             }`}
                         >
-                          {grade}
+                          {grade.name}
                         </div>
                       ))}
                     </div>
@@ -399,14 +439,14 @@ whitespace-nowrap
 
                     {!selectedGrade && (
                       <div className="space-y-3 pb-10">
-                        {Object.keys(generalData).map((grade) => (
+                        {grades.map((grade) => (
                           <div
-                            key={grade}
+                            key={grade.id}
                             onClick={() => setSelectedGrade(grade)}
                             className="px-4 py-3 bg-gray-100 rounded-lg cursor-pointer 
-                     hover:bg-yellow-500 hover:text-white transition"
+               hover:bg-yellow-500 hover:text-white transition"
                           >
-                            {grade}
+                            {grade.name}
                           </div>
                         ))}
                       </div>

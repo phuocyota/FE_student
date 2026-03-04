@@ -9,29 +9,36 @@ import ExamDoing from "./pages/ExamDoing";
 import { Toaster } from "react-hot-toast";
 import ExamDashboard from "./pages/ExamDashboard";
 import Profile from "./pages/Profile";
-
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => {
   return (
     <>
-    <Toaster position="top-right" />
+      <Toaster position="top-right" />
       <Header />
-      
-      
+
+
 
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/exam-dashboard" element={<ExamDashboard />} />
-        <Route path="/profile-user" element={<Profile />} />
-        <Route path="/notifications" element={<div>Thông báo</div>} />   
+        <Route
+          path="/exam-dashboard"
+          element={
+            <ProtectedRoute>
+              <ExamDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/profile-user" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/notifications" element={<div>Thông báo</div>} />
         <Route path="/login" element={<Login />} />
         <Route path="/exam-list" element={<ExamList />} />
-        <Route path="/exam/:id" element={<ExamDetail />} />
-        <Route path="/exam-doing/:id" element={<ExamDoing />} />
+        <Route path="/exam/:id" element={<ProtectedRoute> <ExamDetail /> </ProtectedRoute>} />
+        <Route path="/exam-doing/:id" element={<ProtectedRoute> <ExamDoing /> </ProtectedRoute>} />
       </Routes>
 
 
-     
+
     </>
   );
 };
