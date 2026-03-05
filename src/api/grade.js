@@ -7,3 +7,10 @@ export const getGrades = () => {
     method: "GET",
   });
 };
+
+// lấy số đề có trogn 1 bộ trang home 
+export const getExamSetDetail = (id) => {
+  return apiRequest(`/exam-set/${id}`, {
+    method: "GET",
+  });
+};

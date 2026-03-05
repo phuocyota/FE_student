@@ -92,21 +92,17 @@ const Header = () => {
         const gradeList = data.map((item) => item.grade);
         setGrades(gradeList);
 
-        // tạo object subjects theo gradeId
+        // subjects theo gradeId
         const subjectsObj = {};
 
         data.forEach((item) => {
           const gradeId = item.grade.id;
 
-          subjectsObj[gradeId] = {};
-
-          item.subjects.forEach((subject) => {
-            subjectsObj[gradeId][subject.name] =
-              subject.examSets?.map((exam) => exam.title) || [];
-          });
+          subjectsObj[gradeId] = item.subjects;
         });
 
         setSubjectsData(subjectsObj);
+
       } catch (err) {
         console.error(err);
       }
@@ -114,7 +110,6 @@ const Header = () => {
 
     fetchGrades();
   }, []);
-
 
   /* ====== Helpers ====== */
   const generalData = examData["Giáo dục phổ thông"];
@@ -425,25 +420,38 @@ whitespace-nowrap
                     <div className="flex-1 grid grid-cols-2 gap-8 pl-8 text-sm">
 
                       {selectedGrade &&
-                        subjectsData[selectedGrade.id] &&
-                        Object.keys(subjectsData[selectedGrade.id]).map((subject) => (
-                          <div key={subject}>
+                        subjectsData[selectedGrade.id]?.map((subject) => (
+                          <div key={subject.id}>
+
+                            {/* SUBJECT NAME */}
                             <div className="bg-gray-100 px-4 py-2 rounded-lg font-semibold mb-4 border">
-                              {subject}
+                              {subject.name}
                             </div>
 
+                            {/* EXAM SET LIST */}
                             <ul className="space-y-2 text-gray-600">
-                              {subjectsData[selectedGrade.id][subject].map((item) => (
-                                <li
-                                  key={item.id}
-                                  className="hover:text-green-600 cursor-pointer"
-                                >
-                                  {item.title}
+
+                              {subject.examSets?.length > 0 ? (
+                                subject.examSets.map((exam) => (
+                                  <li
+                                    key={exam.id}
+                                    onClick={() => navigate(`/exam-list/${subject.id}`)}
+                                    className="hover:text-green-600 cursor-pointer"
+                                  >
+                                    {exam.title}
+                                  </li>
+                                ))
+                              ) : (
+                                <li className="text-gray-400 italic">
+                                  Chưa có bộ đề
                                 </li>
-                              ))}
+                              )}
+
                             </ul>
+
                           </div>
-                        ))}
+                        ))
+                      }
 
                     </div>
                   </div>
@@ -468,7 +476,7 @@ whitespace-nowrap
                     )}
 
                     {/* DANH SÁCH MÔN */}
-                    {selectedGrade && subjectsData[selectedGrade.id] && (
+                    {selectedGrade && (
                       <div className="pb-10">
 
                         <div
@@ -480,28 +488,38 @@ whitespace-nowrap
 
                         <div className="space-y-6 text-sm">
 
-                          {Object.keys(subjectsData[selectedGrade.id]).map((subject) => (
-                            <div key={subject}>
+                          {subjectsData[selectedGrade.id]?.map((subject) => (
+                            <div key={subject.id}>
 
                               <div className="bg-gray-100 px-4 py-2 rounded-lg font-semibold mb-2 border">
-                                {subject}
+                                {subject.name}
                               </div>
 
                               <ul className="space-y-2 text-gray-600">
-                                {subjectsData[selectedGrade.id][subject].map((item) => (
-                                  <li
-                                    key={item.id}
-                                    className="hover:text-green-600 cursor-pointer"
-                                  >
-                                    {item.title}
+
+                                {subject.examSets?.length > 0 ? (
+                                  subject.examSets.map((exam) => (
+                                    <li
+                                      key={exam.id}
+                                      onClick={() => navigate(`/exam-set/${examSet.id}`)}
+                                      className="hover:text-green-600 cursor-pointer"
+                                    >
+                                      {exam.title}
+                                    </li>
+                                  ))
+                                ) : (
+                                  <li className="text-gray-400 italic">
+                                    Chưa có bộ đề
                                   </li>
-                                ))}
+                                )}
+
                               </ul>
 
                             </div>
                           ))}
 
                         </div>
+
                       </div>
                     )}
 
