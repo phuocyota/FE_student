@@ -79,24 +79,36 @@ const Header = () => {
 
   // api lấy dữ liệu lớp học
   const [grades, setGrades] = useState([]);
+  const [subjectsData, setSubjectsData] = useState({});
+
   useEffect(() => {
     const fetchGrades = async () => {
       try {
         const res = await getGrades();
 
-        const gradeList = res?.data?.data || [];
+        const data = res.data.data;
 
-        // Sắp xếp theo số trong code (K1, K2, K10...)
-        gradeList.sort((a, b) => {
-          const numA = parseInt(a.code.replace("K", ""));
-          const numB = parseInt(b.code.replace("K", ""));
-          return numA - numB;
+        // danh sách khối
+        const gradeList = data.map((item) => item.grade);
+        setGrades(gradeList);
+
+        // tạo object subjects theo gradeId
+        const subjectsObj = {};
+
+        data.forEach((item) => {
+          const gradeId = item.grade.id;
+
+          subjectsObj[gradeId] = {};
+
+          item.subjects.forEach((subject) => {
+            subjectsObj[gradeId][subject.name] =
+              subject.examSets?.map((exam) => exam.title) || [];
+          });
         });
 
-
-        setGrades(gradeList);
-      } catch (error) {
-        console.error("Lỗi load grade:", error);
+        setSubjectsData(subjectsObj);
+      } catch (err) {
+        console.error(err);
       }
     };
 
@@ -355,7 +367,7 @@ whitespace-nowrap
                 onClick={(e) => {
                   e.stopPropagation();
 
-                  setPinned((prev) => !prev);   // chuẩn React
+                  setPinned((prev) => !prev);
                   setShowMega(true);
 
                   setPinnedLanguage(false);
@@ -364,10 +376,8 @@ whitespace-nowrap
                   setSelectedGrade(null);
                 }}
                 className={`flex items-center gap-2 cursor-pointer transition
-      ${showMega || pinned
-                    ? "text-yellow-600"
-                    : "hover:text-yellow-600"
-                  }`}
+    ${showMega || pinned ? "text-yellow-600" : "hover:text-yellow-600"}
+    `}
               >
                 GIÁO DỤC PHỔ THÔNG
                 <ChevronDown size={16} />
@@ -378,73 +388,78 @@ whitespace-nowrap
                   ref={generalRef}
                   onClick={(e) => e.stopPropagation()}
                   className="
-        fixed md:absolute
-        top-[120px] md:top-10
-        left-1/2 -translate-x-1/2
-        w-[95%] md:w-screen
-        max-w-[1200px]
-        bg-white rounded-2xl shadow-2xl
-        p-4 md:p-8
-        z-50
-        transition-all duration-300
+      fixed md:absolute
+      top-[120px] md:top-10
+      left-1/2 -translate-x-1/2
+      w-[95%] md:w-screen
+      max-w-[1200px]
+      bg-white rounded-2xl shadow-2xl
+      p-4 md:p-8
+      z-50
+      transition-all duration-300
       "
                 >
 
-                  {/* DESKTOP */}
+                  {/* ================= DESKTOP ================= */}
                   <div className="hidden md:flex">
+
+                    {/* LEFT - GRADES */}
                     <div className="md:w-80 border-r pr-8">
                       {grades.map((grade) => (
                         <div
                           key={grade.id}
                           onClick={() => setSelectedGrade(grade)}
                           className={`px-4 py-2 rounded-lg cursor-pointer mb-1 transition
-      ${selectedGrade?.id === grade.id
+              ${selectedGrade?.id === grade.id
                               ? "bg-yellow-500 text-white"
                               : "hover:bg-gray-100"
-                            }`}
+                            }
+              `}
                         >
                           {grade.name}
                         </div>
                       ))}
                     </div>
 
+                    {/* RIGHT - SUBJECTS */}
                     <div className="flex-1 grid grid-cols-2 gap-8 pl-8 text-sm">
-                      {Object.keys(
-                        generalData[selectedGrade || Object.keys(generalData)[0]]
-                      ).map((subject) => (
-                        <div key={subject}>
-                          <div className="bg-gray-100 px-4 py-2 rounded-lg font-semibold mb-4 border">
-                            {subject}
-                          </div>
 
-                          <ul className="space-y-2 text-gray-600">
-                            {generalData[
-                              selectedGrade || Object.keys(generalData)[0]
-                            ][subject].map((item, i) => (
-                              <li
-                                key={i}
-                                className="hover:text-green-600 cursor-pointer"
-                              >
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                      {selectedGrade &&
+                        subjectsData[selectedGrade.id] &&
+                        Object.keys(subjectsData[selectedGrade.id]).map((subject) => (
+                          <div key={subject}>
+                            <div className="bg-gray-100 px-4 py-2 rounded-lg font-semibold mb-4 border">
+                              {subject}
+                            </div>
+
+                            <ul className="space-y-2 text-gray-600">
+                              {subjectsData[selectedGrade.id][subject].map((item) => (
+                                <li
+                                  key={item.id}
+                                  className="hover:text-green-600 cursor-pointer"
+                                >
+                                  {item.title}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+
                     </div>
                   </div>
 
-                  {/* MOBILE */}
+                  {/* ================= MOBILE ================= */}
                   <div className="md:hidden h-full max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
 
+                    {/* DANH SÁCH KHỐI */}
                     {!selectedGrade && (
                       <div className="space-y-3 pb-10">
                         {grades.map((grade) => (
                           <div
                             key={grade.id}
                             onClick={() => setSelectedGrade(grade)}
-                            className="px-4 py-3 bg-gray-100 rounded-lg cursor-pointer 
-               hover:bg-yellow-500 hover:text-white transition"
+                            className="px-4 py-3 bg-gray-100 rounded-lg cursor-pointer
+                hover:bg-yellow-500 hover:text-white transition"
                           >
                             {grade.name}
                           </div>
@@ -452,7 +467,8 @@ whitespace-nowrap
                       </div>
                     )}
 
-                    {selectedGrade && subjects && (
+                    {/* DANH SÁCH MÔN */}
+                    {selectedGrade && subjectsData[selectedGrade.id] && (
                       <div className="pb-10">
 
                         <div
@@ -463,30 +479,34 @@ whitespace-nowrap
                         </div>
 
                         <div className="space-y-6 text-sm">
-                          {Object.keys(subjects).map((subject) => (
+
+                          {Object.keys(subjectsData[selectedGrade.id]).map((subject) => (
                             <div key={subject}>
+
                               <div className="bg-gray-100 px-4 py-2 rounded-lg font-semibold mb-2 border">
                                 {subject}
                               </div>
 
                               <ul className="space-y-2 text-gray-600">
-                                {subjects[subject].map((item, i) => (
+                                {subjectsData[selectedGrade.id][subject].map((item) => (
                                   <li
-                                    key={i}
+                                    key={item.id}
                                     className="hover:text-green-600 cursor-pointer"
                                   >
-                                    {item}
+                                    {item.title}
                                   </li>
                                 ))}
                               </ul>
+
                             </div>
                           ))}
-                        </div>
 
+                        </div>
                       </div>
                     )}
 
                   </div>
+
                 </div>
               )}
             </div>
