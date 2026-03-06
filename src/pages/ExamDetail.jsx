@@ -2,12 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
 import avatar from "../assets/avatar.png";
+import { useLocation } from "react-router-dom";
 const ExamDetail = () => {
-  const { id } = useParams();
+  const { examSetId, id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const exam = location.state?.exam;
+
   const [history, setHistory] = useState([]);
 
-  const examTitle = "Đề kiểm tra 15 phút - Đề số 02";
+  const examTitle = exam?.title || "Đề thi";
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(`exam_${id}`)) || [];
@@ -26,6 +30,13 @@ const ExamDetail = () => {
       year: "numeric",
     });
   };
+
+
+  useEffect(() => {
+  if (!exam) {
+    navigate(`/exam-set/${examSetId}`);
+  }
+}, []);
 
   return (
     <div className="bg-gray-100 min-h-screen py-6">
@@ -49,12 +60,12 @@ const ExamDetail = () => {
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-semibold">
-                  {examTitle}
+                  {exam?.title}
                 </h1>
               </div>
 
               <div className="flex items-center gap-2 text-gray-500 text-sm mt-2">
-                <Clock size={16} /> 15 phút
+                <Clock size={16} /> {exam?.time}
               </div>
             </div>
 

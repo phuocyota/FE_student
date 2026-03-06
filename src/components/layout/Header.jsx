@@ -202,22 +202,23 @@ const Header = () => {
   return (
     <header className="bg-green-700 text-white relative">
       {/* {/* <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between"> */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center ">
+     <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
 
-        {/* LOGO */}
-        <div className="w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden shrink-0">
-          <Link to="/">
-            <img
-              src={logo}
-              alt="logo"
-              className="w-full h-full object-cover cursor-pointer"
-            />
-          </Link>
-        </div>
+        <div className="flex items-center">
+  <div className="w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden shrink-0">
+    <Link to="/">
+      <img
+        src={logo}
+        alt="logo"
+        className="w-full h-full object-cover cursor-pointer"
+      />
+    </Link>
+  </div>
+</div>
 
         {/* MENU CENTER */}
-        <nav className="flex-1 flex justify-center items-center gap-6 md:gap-8 pl-3">
-          {/* THI */}
+        <nav className=" flex justify-center items-center gap-6 md:gap-8  ">
+         
           {/* THI */}
           <div
             ref={generalRef}
@@ -255,7 +256,7 @@ const Header = () => {
         </nav>
 
         {/* LOGIN */}
-        <div className="w-80 flex justify-end relative">
+        <div className=" flex justify-end relative">
           {user ? (
             <div
               ref={userMenuRef}
@@ -306,7 +307,7 @@ const Header = () => {
 
                     <div
                       onClick={() => {
-                        // 🔥 Xoá toàn bộ thông tin đăng nhập
+                        // Xoá toàn bộ thông tin đăng nhập
                         localStorage.removeItem("accessToken");
                         localStorage.removeItem("refreshToken");
                         localStorage.removeItem("aToken");
@@ -435,7 +436,7 @@ whitespace-nowrap
                                 subject.examSets.map((exam) => (
                                   <li
                                     key={exam.id}
-                                    onClick={() => navigate(`/exam-list/${subject.id}`)}
+                                   onClick={() => navigate(`/exam-set/${exam.id}`)}
                                     className="hover:text-green-600 cursor-pointer"
                                   >
                                     {exam.title}

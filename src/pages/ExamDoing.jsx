@@ -354,7 +354,7 @@ const notAnsweredCount = mockExamData.questions.filter(
                         }
                       }}
                       className={`
-        border rounded-xl p-4 mb-3 transition flex justify-between items-center
+        border border-gray-200 rounded-xl p-4 mb-3 transition flex justify-between items-center
         ${isReviewMode
                           ? isCorrect
                             ? "border-green-600 bg-green-50"

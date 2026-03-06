@@ -128,7 +128,9 @@ const ExamList = () => {
                   </div>
 
                   <button
-                    onClick={() => navigate(`/exam/${item.id}`)}
+                    onClick={() => navigate(`/exam/${examSetId}/${item.id}`, {
+                      state: { exam: item }
+                    })}
                     className="cursor-pointer border border-gray-300 px-4 py-2 sm:py-1 rounded text-sm hover:bg-gray-50 w-full sm:w-auto"
                   >
                     Xem

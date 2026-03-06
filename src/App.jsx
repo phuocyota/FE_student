@@ -32,8 +32,15 @@ const App = () => {
         <Route path="/profile-user" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/notifications" element={<div>Thông báo</div>} />
         <Route path="/login" element={<Login />} />
-       <Route path="/exam-set/:examSetId" element={<ExamList />} />
-        <Route path="/exam/:id" element={<ProtectedRoute> <ExamDetail /> </ProtectedRoute>} />
+        <Route path="/exam-set/:examSetId" element={<ExamList />} />
+        <Route
+          path="/exam/:examSetId/:id"
+          element={
+            <ProtectedRoute>
+              <ExamDetail />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/exam-doing/:id" element={<ProtectedRoute> <ExamDoing /> </ProtectedRoute>} />
       </Routes>
 
