@@ -2,157 +2,53 @@ import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
 import mockExamData from "../datas/mockExamData";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
+import { submitAttempt } from "../api/attempt";
+
 const ExamDoing = () => {
-  //   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
 
-
-  // thoát 
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
+
+  const attemptId = location.state?.attemptId;
+  const [questions] = useState(location.state?.questions || []);
+
+  const [answers, setAnswers] = useState({});
+  const questionRefs = useRef([]);
+
   const [showExitModal, setShowExitModal] = useState(false);
-
-  const handleExitClick = () => {
-    setShowExitModal(true);
-  };
-
-  const confirmExit = () => {
-    navigate(`/exam/${id}`); // quay lại trang trước
-  };
-
-  const cancelExit = () => {
-    setShowExitModal(false);
-  };
-
-  // submit bài làm
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
 
-
+  /* ================= TIMER ================= */
 
   const totalTime = mockExamData.duration * 60;
   const [timeLeft, setTimeLeft] = useState(totalTime);
 
-  const timeUsedInSeconds = totalTime - timeLeft;
-  const usedMinutes = Math.floor(timeUsedInSeconds / 60);
-  const usedSeconds = timeUsedInSeconds % 60;
-
-  const handleSubmit = () => {
-    const score = Object.keys(answers).length;
-
-    const timeSpent = `${usedMinutes} phút ${usedSeconds
-      .toString()
-      .padStart(2, "0")} giây`;
-
-    const newResult = {
-      date: new Date().toLocaleDateString(),
-      score: `${score}/${mockExamData.questions.length}`,
-      time: timeSpent,
-    };
-
-    const existing =
-      JSON.parse(localStorage.getItem(`exam_${id}`)) || [];
-
-    const updated = [...existing, newResult];
-
-    localStorage.setItem(`exam_${id}`, JSON.stringify(updated));
-
-    navigate(`/exam/${id}`);
-  };
-
-  // chọn số câu chạy đến đúng cau hỏi
-  const questionRefs = useRef([]);
-
-  // tự động nộp khi hết giờ làm bài 
-  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
-
-
-  // xem lại bài làm
-  const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const reviewIndex = queryParams.get("review");
   useEffect(() => {
-    if (reviewIndex !== null) {
-      const saved =
-        JSON.parse(localStorage.getItem(`exam_${id}`)) || [];
 
-      const reviewData = saved[reviewIndex];
-
-      if (reviewData) {
-        setAnswers(reviewData.answers || {});
-        setTimeLeft(0); // không cho làm tiếp
-      }
-    }
-  }, [reviewIndex, id]);
-
-  // hiển thị đáp án đúng sai 
-  const isReviewMode = reviewIndex !== null;
-
-  // hiển thị số câu hỏi đúng sai trên header khi review 
-  const totalQuestions = mockExamData.questions.length;
-
-const correctCount = mockExamData.questions.filter(
-  (q) => answers[q.id] === q.correctAnswer
-).length;
-
-const wrongCount = mockExamData.questions.filter(
-  (q) =>
-    answers[q.id] &&
-    answers[q.id] !== q.correctAnswer
-).length;
-
-const notAnsweredCount = mockExamData.questions.filter(
-  (q) => !answers[q.id]
-).length;
-
-  /* ================= TIMER ================= */
-
-  useEffect(() => {
     if (timeLeft <= 0) return;
 
     const timer = setInterval(() => {
+
       setTimeLeft((prev) => {
+
         if (prev <= 1) {
           clearInterval(timer);
           setShowTimeUpModal(true);
           return 0;
         }
+
         return prev - 1;
+
       });
+
     }, 1000);
 
     return () => clearInterval(timer);
+
   }, [timeLeft]);
-
-  const submitExam = () => {
-    const score = mockExamData.questions.filter(
-      (q) => answers[q.id] === q.correctAnswer
-    ).length;
-
-    const timeUsedInSeconds = totalTime - timeLeft;
-    const usedMinutes = Math.floor(timeUsedInSeconds / 60);
-    const usedSeconds = timeUsedInSeconds % 60;
-
-    const timeSpent = `${usedMinutes} phút ${usedSeconds
-      .toString()
-      .padStart(2, "0")} giây`;
-
-    const newResult = {
-      date: new Date().toLocaleDateString(),
-      score: `${score}/${mockExamData.questions.length}`,
-      time: timeSpent,
-      answers: answers,
-    };
-
-    const existing =
-      JSON.parse(localStorage.getItem(`exam_${id}`)) || [];
-
-    const updated = [...existing, newResult];
-
-    localStorage.setItem(`exam_${id}`, JSON.stringify(updated));
-
-    navigate(`/exam/${id}`);
-  };
-
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -163,227 +59,175 @@ const notAnsweredCount = mockExamData.questions.filter(
 
   const timeProgress = (timeLeft / totalTime) * 100;
 
-  /* ================= HANDLE ANSWER ================= */
-  const handleSelect = (questionId, label) => {
-    setAnswers({
-      ...answers,
-      [questionId]: label,
-    });
+  /* ================= ANSWER ================= */
+
+  const handleSelect = (question, index) => {
+
+    const label = String.fromCharCode(65 + index);
+    const value = `${question.orderNo}${label}`;
+
+    setAnswers((prev) => ({
+      ...prev,
+      [question.id]: value
+    }));
+
   };
 
+  const notAnsweredCount = questions.filter(
+    (q) => !answers[q.id]
+  ).length;
+
+  /* ================= SUBMIT ================= */
+
+  const handleSubmit = async () => {
+
+    try {
+
+      const answersSubmit = Object.values(answers);
+
+      const res = await submitAttempt(attemptId, answersSubmit);
+
+      const totalPoints = questions.reduce(
+        (sum, q) => sum + q.points,
+        0
+      );
+
+      if (res.success) {
+
+        const timeUsed = totalTime - timeLeft;
+        const minutes = Math.floor(timeUsed / 60);
+        const seconds = timeUsed % 60;
+
+        const result = {
+          date: res.data.submittedAt,
+          score: res.data.score,
+          total: totalPoints,
+          time: `${minutes} phút ${seconds} giây`,
+          attemptId: res.data.attemptId
+        };
+
+        const existing =
+          JSON.parse(localStorage.getItem(`exam_${id}`)) || [];
+
+        localStorage.setItem(
+          `exam_${id}`,
+          JSON.stringify([...existing, result])
+        );
+
+        localStorage.setItem(
+          "exam_result_popup",
+          JSON.stringify({
+            score: res.data.score,
+            total: totalPoints
+          })
+        );
+
+        toast.success("Nộp bài thành công");
+        navigate(-1);
+
+      }
+
+    } catch (error) {
+
+      console.error(error);
+      toast.error("Nộp bài thất bại");
+
+    }
+
+  };
+
+  const confirmExit = () => navigate(-1);
+
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
 
-      {/* ================= HEADER ================= */}
-<div className="bg-white border-b border-gray-200 px-4 py-3">
+    <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50 overflow-hidden">
 
-  {isReviewMode ? (
+      {/* HEADER */}
 
-  <>
-    {/* MOBILE - scroll ngang */}
-    <div className="flex md:hidden overflow-x-auto whitespace-nowrap gap-6 text-sm font-medium">
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
 
-      <span>
-        Tất cả ({totalQuestions})
-      </span>
+  <div className="flex items-center">
 
-      <span className="flex items-center gap-2 text-green-600">
-        <span className="w-3 h-3 rounded-full bg-green-600"></span>
-        Đúng ({correctCount})
-      </span>
+    {/* BACK BUTTON */}
+    <button
+      onClick={() => setShowExitModal(true)}
+      className="hidden md:flex w-10 h-10 rounded-full bg-gray-200 items-center justify-center hover:bg-gray-300 cursor-pointer mr-4"
+    >
+      <ArrowLeft size={18} />
+    </button>
 
-      <span className="flex items-center gap-2 text-red-600">
-        <span className="w-3 h-3 rounded-full bg-red-600"></span>
-        Sai ({wrongCount})
-      </span>
+    {/* HEADER CENTER */}
+    <div className="flex-1 flex justify-center md:pr-80">
 
-      <span className="flex items-center gap-2 text-gray-500">
-        <span className="w-3 h-3 rounded-full bg-gray-400"></span>
-        Tự luận (0)
-      </span>
+      <div className="flex gap-8 text-sm font-medium">
 
-      <span className="flex items-center gap-2 text-gray-500">
-        <span className="w-3 h-3 rounded-full border border-gray-400"></span>
-        Chưa làm ({notAnsweredCount})
-      </span>
-
-    </div>
-
-    {/* DESKTOP */}
-    <div className="hidden md:flex items-center justify-between">
-
-      {/* Nút quay lại */}
-      <button
-        onClick={handleExitClick}
-        className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition"
-      >
-        <ArrowLeft size={18} />
-      </button>
-
-      {/* Căn giữa */}
-      <div className="flex gap-8 text-sm font-medium justify-center">
-
-        <span>
-          Tất cả ({totalQuestions})
-        </span>
-
-        <span className="flex items-center gap-2 text-green-600">
-          <span className="w-3 h-3 rounded-full bg-green-600"></span>
-          Đúng ({correctCount})
-        </span>
-
-        <span className="flex items-center gap-2 text-red-600">
-          <span className="w-3 h-3 rounded-full bg-red-600"></span>
-          Sai ({wrongCount})
-        </span>
-
-        <span className="flex items-center gap-2 text-gray-500">
-          <span className="w-3 h-3 rounded-full bg-gray-400"></span>
-          Tự luận (0)
-        </span>
-
-        <span className="flex items-center gap-2 text-gray-500">
-          <span className="w-3 h-3 rounded-full border border-gray-400"></span>
-          Chưa làm ({notAnsweredCount})
-        </span>
-
-      </div>
-
-      <div /> {/* giữ cân layout */}
-    </div>
-  </>
-
-) : (
-
-    /* ================= LÀM BÀI BÌNH THƯỜNG ================= */
-    <>
-      {/* MOBILE */}
-      <div className="flex items-center gap-4 text-sm font-medium md:hidden">
         <span className="border-b-2 border-green-600 pb-1">
-          Tất cả ({mockExamData.questions.length})
+          Tất cả ({questions.length})
         </span>
 
-        <span className="flex items-center gap-1 text-gray-500">
+        <span className="text-gray-500">
           ○ Chưa làm ({notAnsweredCount})
         </span>
 
-        <span className="flex items-center gap-1 text-gray-500">
-          ● Kiểm tra lại (0)
-        </span>
       </div>
 
-      {/* DESKTOP */}
-      <div className="hidden md:flex items-center justify-between">
-        <button
-          onClick={handleExitClick}
-          className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition"
-        >
-          <ArrowLeft size={18} />
-        </button>
+    </div>
 
-        <div className="flex gap-8 text-sm font-medium">
-          <span className="border-b-2 border-green-600 pb-1">
-            Tất cả ({mockExamData.questions.length})
-          </span>
-
-          <span className="text-gray-500">
-            ○ Chưa làm ({notAnsweredCount})
-          </span>
-
-          <span className="text-gray-500">
-            ● Kiểm tra lại (0)
-          </span>
-        </div>
-
-        <div />
-      </div>
-    </>
-
-  )}
+  </div>
 
 </div>
 
-      {/* ================= BODY ================= */}
-      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
-        {/* ================= LEFT ================= */}
-        <div className="flex-1 overflow-y-auto flex justify-center p-6">
+      {/* BODY */}
 
-          <div className="w-full max-w-3xl space-y-8">
+      <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
 
-            {mockExamData.questions.map((question, index) => (
+        {/* LEFT */}
+
+        <div className="flex-1 overflow-y-auto flex justify-center p-4 md:p-6">
+
+          <div className="w-full max-w-3xl space-y-6 md:space-y-8">
+
+            {questions.map((question, index) => (
 
               <div
                 key={question.id}
                 ref={(el) => (questionRefs.current[index] = el)}
-                className="bg-white p-8 rounded-xl border-gray-200  border shadow-sm"
+                className="bg-white p-6 md:p-8 rounded-xl border border-gray-200 shadow-sm"
               >
 
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="px-4 py-1 bg-gray-100 rounded-full text-sm">
-                    Câu {question.id}
-                  </span>
-                  <span className="text-gray-600">
-                    {question.instruction}
-                  </span>
-                </div>
+                <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
+                  Câu {question.orderNo}
+                </span>
 
-                <p className="mb-4 font-medium">
-                  {question.questionText}
+                <p className="my-4 font-medium">
+                  {question.content}
                 </p>
 
-                {question.image && (
-                  <img
-                    src={question.image}
-                    alt=""
-                    className="rounded-lg mb-4 max-w-md border-gray-200 border"
-                  />
-                )}
+                {question.answers.map((answer, i) => {
 
-                {question.options.map((opt) => {
-                  const isSelected = answers[question.id] === opt.label;
-                  const isCorrect = opt.label === question.correctAnswer;
-                  const isWrongSelected = isReviewMode && isSelected && !isCorrect;
+                  const label = String.fromCharCode(65 + i);
+                  const isSelected =
+                    answers[question.id] === `${question.orderNo}${label}`;
 
                   return (
                     <div
-                      key={opt.label}
-                      onClick={() => {
-                        if (!isReviewMode) {
-                          handleSelect(question.id, opt.label);
-                        }
-                      }}
-                      className={`
-        border border-gray-200 rounded-xl p-4 mb-3 transition flex justify-between items-center
-        ${isReviewMode
-                          ? isCorrect
-                            ? "border-green-600 bg-green-50"
-                            : isWrongSelected
-                              ? "border-red-600 bg-red-50"
-                              : "bg-gray-50"
-                          : isSelected
-                            ? "border-green-600 bg-green-50 cursor-pointer"
-                            : "hover:bg-gray-50 cursor-pointer"
-                        }
-      `}
+                      key={answer.id}
+                      onClick={() => handleSelect(question, i)}
+                      className={`border border-gray-200 rounded-xl p-4 mb-3 flex justify-between cursor-pointer
+                      ${isSelected
+                          ? "border-green-600 bg-green-50"
+                          : "hover:bg-gray-50"
+                        }`}
                     >
+
                       <div>
-                        <strong>{opt.label}.</strong> {opt.text}
+                        <strong>{label}.</strong> {answer.content}
                       </div>
 
-                      {/* ICONS KHI REVIEW */}
-                      {isReviewMode && (
-                        <div>
-                          {isCorrect && (
-                            <span className="text-green-600 font-bold">✓</span>
-                          )}
-                          {isWrongSelected && (
-                            <span className="text-red-600 font-bold">✗</span>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
+
                 })}
 
               </div>
@@ -391,100 +235,142 @@ const notAnsweredCount = mockExamData.questions.filter(
             ))}
 
           </div>
+
         </div>
 
-        {/* ================= RIGHT ================= */}
+
+        {/* RIGHT PANEL */}
+
         <div
           className="
-    w-full 
-    md:w-80 
-    bg-white 
-    border-t 
-    md:border-t-0 
-    md:border-l 
-    border-gray-200 
-    flex flex-col 
-    md:h-full
-  "
+          w-full
+          md:w-80
+          bg-white
+          border-t md:border-t-0
+          md:border-l
+          border-gray-200
+          flex flex-col
+          md:h-full
+        "
         >
-          {/* ===== TOP CONTENT ===== */}
-          <div className="p-3 md:p-5 md:flex-1">
-            <p className="text-xs md:text-sm text-gray-500 mb-1">
+
+          {/* DESKTOP CONTENT */}
+
+          <div className="hidden md:block p-5 flex-1">
+
+            <p className="text-sm text-gray-500 mb-1">
               BÀI THI
             </p>
 
-            <h2 className="font-semibold mb-3 text-base md:text-lg">
+            <h2 className="font-semibold mb-3">
               {mockExamData.title}
             </h2>
 
-            <div className="mb-2 text-xs md:text-sm">
-              {Object.keys(answers).length}/
-              {mockExamData.questions.length} câu
+            <div className="mb-2 text-sm">
+              {Object.keys(answers).length}/{questions.length} câu
             </div>
 
-            {/* Progress */}
             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
               <div
-                className="bg-green-600 h-2 rounded-full transition-all duration-1000"
+                className="bg-green-600 h-2 rounded-full"
                 style={{ width: `${timeProgress}%` }}
               />
             </div>
 
-            {/* Timer */}
             <div className="text-center mb-3">
               <span className="bg-green-600 text-white px-3 py-0.5 rounded-full text-xs">
                 {formattedTime}
               </span>
             </div>
 
-            {/* QUESTION NAVIGATOR - Desktop Only */}
-            <div className="hidden md:grid grid-cols-5 gap-1">
-              {mockExamData.questions.map((q, index) => {
+            <div className="grid grid-cols-5 gap-1">
+
+              {questions.map((q, index) => {
+
                 const isAnswered = answers[q.id];
 
                 return (
                   <button
                     key={q.id}
-                    onClick={() => {
+                    onClick={() =>
                       questionRefs.current[index]?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    }}
-                    className={`
-          w-8 h-8 text-xs rounded border border-gray-300 transition
-          ${isAnswered
-                        ? "bg-green-600 text-white border-green-600"
+                        behavior: "smooth"
+                      })
+                    }
+                    className={`w-8 h-8 text-xs rounded border border-gray-200
+                    ${isAnswered
+                        ? "bg-green-600 text-white"
                         : "bg-gray-100"
-                      }
-        `}
+                      }`}
                   >
-                    {q.id}
+                    {q.orderNo}
                   </button>
                 );
+
               })}
+
             </div>
+
           </div>
 
-          {/* ===== BOTTOM BUTTONS ===== */}
-          <div className="p-3 md:p-5 flex justify-between items-center mb-20 md:mb-15">
+
+          {/* MOBILE BAR */}
+
+          <div className="md:hidden p-4 border-t border-gray-200">
+
+            <p className="text-sm font-semibold mb-3">
+              {mockExamData.title}
+            </p>
+
+            <div className="flex justify-between">
+
+              <button
+                onClick={() => setShowExitModal(true)}
+                className="text-gray-600 cursor-pointer"
+              >
+                ✕ Thoát
+              </button>
+
+              <button
+                onClick={() => setShowSubmitModal(true)}
+                className="bg-green-700 text-white px-5 py-2 rounded-full cursor-pointer"
+              >
+                NỘP BÀI
+              </button>
+
+            </div>
+
+          </div>
+
+
+          {/* DESKTOP BUTTON */}
+
+          <div className="hidden md:flex p-5 justify-between border-t border-gray-200">
+            
+
             <button
-              onClick={handleExitClick}
-              className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition text-sm cursor-pointer">
+              onClick={() => setShowExitModal(true)}
+              className="text-gray-600 hover:text-red-600 cursor-pointer"
+            >
               ✕ Thoát
             </button>
 
             <button
               onClick={() => setShowSubmitModal(true)}
-              className="bg-green-700 hover:bg-green-800 text-white px-5 py-2 rounded-full text-sm font-semibold transition">
+              className="bg-green-700 hover:bg-green-800 text-white px-5 py-2 rounded-full cursor-pointer"
+            >
               NỘP BÀI
             </button>
+
           </div>
+
         </div>
+
       </div>
 
+      
+      {/* thoát model */}
 
-      {/* thoát modal */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-80 shadow-lg text-center">
@@ -498,26 +384,33 @@ const notAnsweredCount = mockExamData.questions.filter(
             </p>
 
             <div className="flex justify-center gap-4">
+
               <button
-                onClick={cancelExit}
-                className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
+                onClick={() => setShowExitModal(false)}
+                className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
               >
                 Hủy
               </button>
 
               <button
                 onClick={confirmExit}
-                className="px-4 py-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition"
+                className="px-4 py-2 rounded-full bg-red-600 text-white hover:bg-red-700"
               >
                 Thoát
               </button>
+
             </div>
 
           </div>
+
+
+
+
         </div>
       )}
 
-      {/* Submit Modal */}
+      {/* submit modal */}
+
       {showSubmitModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-80 shadow-lg text-center">
@@ -531,9 +424,10 @@ const notAnsweredCount = mockExamData.questions.filter(
             </p>
 
             <div className="flex justify-center gap-4">
+
               <button
                 onClick={() => setShowSubmitModal(false)}
-                className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
+                className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
               >
                 Hủy
               </button>
@@ -543,17 +437,19 @@ const notAnsweredCount = mockExamData.questions.filter(
                   setShowSubmitModal(false);
                   handleSubmit();
                 }}
-                className="px-4 py-2 rounded-full bg-green-600 text-white hover:bg-green-700 transition"
+                className="px-4 py-2 rounded-full bg-green-600 text-white hover:bg-green-700"
               >
                 Nộp bài
               </button>
+
             </div>
 
           </div>
         </div>
       )}
 
-      {/* Time's up Modal */}
+      {/* hết giờ làm bài */}
+
       {showTimeUpModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-80 shadow-lg text-center">
@@ -567,8 +463,8 @@ const notAnsweredCount = mockExamData.questions.filter(
             </p>
 
             <button
-              onClick={submitExam}
-              className="px-5 py-2 rounded-full bg-green-600 text-white hover:bg-green-700 transition"
+              onClick={handleSubmit}
+              className="px-5 py-2 rounded-full bg-green-600 text-white hover:bg-green-700"
             >
               Xem kết quả
             </button>
@@ -576,8 +472,11 @@ const notAnsweredCount = mockExamData.questions.filter(
           </div>
         </div>
       )}
+
     </div>
+
   );
+
 };
 
 export default ExamDoing;

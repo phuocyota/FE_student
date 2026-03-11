@@ -502,7 +502,8 @@ whitespace-nowrap
                                   subject.examSets.map((exam) => (
                                     <li
                                       key={exam.id}
-                                      onClick={() => navigate(`/exam-set/${examSet.id}`)}
+                                      // onClick={() => navigate(`/exam-set/${examSet.id}`)}
+                                      onClick={() => navigate(`/exam-set/${exam.id}`)}
                                       className="hover:text-green-600 cursor-pointer"
                                     >
                                       {exam.title}

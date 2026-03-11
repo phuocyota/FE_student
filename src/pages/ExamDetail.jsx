@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
 import avatar from "../assets/avatar.png";
 import { useLocation } from "react-router-dom";
+import { startAttempt } from "../api/attempt";
 const ExamDetail = () => {
   const { examSetId, id } = useParams();
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ const ExamDetail = () => {
   const exam = location.state?.exam;
 
   const [history, setHistory] = useState([]);
+  const [examDetail, setExamDetail] = useState(null);
 
   const examTitle = exam?.title || "Đề thi";
 
@@ -18,9 +20,35 @@ const ExamDetail = () => {
     setHistory(saved);
   }, [id]);
 
-  const handleMockTest = () => {
-    navigate(`/exam-doing/${id}`);
+  const handleMockTest = async () => {
+    try {
+      const payload = {
+        questionBankId: exam?.id,
+        examSetId: examSetId
+      };
+
+      const res = await startAttempt(payload);
+
+      if (res.success) {
+
+        const attemptId = res.data.attemptId;
+        const questions = res.data.questions;
+
+        navigate(`/exam-doing/${exam.id}`, {
+          state: {
+            attemptId,
+            questions
+          }
+        });
+
+      }
+
+    } catch (error) {
+      console.error("Start attempt error:", error);
+    }
   };
+
+
   const formatDateVN = (dateString) => {
     const date = new Date(dateString);
 
@@ -33,10 +61,55 @@ const ExamDetail = () => {
 
 
   useEffect(() => {
-  if (!exam) {
-    navigate(`/exam-set/${examSetId}`);
-  }
-}, []);
+    if (!exam) {
+      navigate(`/exam-set/${examSetId}`);
+    }
+  }, []);
+
+
+  //phân trang 
+  // tìm lần thi điểm cao nhất
+  const highestIndex = history.reduce(
+    (maxIndex, item, index, arr) =>
+      item.score > arr[maxIndex].score ? index : maxIndex,
+    0
+  );
+
+  const highestAttempt = history[highestIndex];
+
+  // phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
+
+  const filteredHistory = history.filter((_, index) => index !== highestIndex);
+
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+
+  const currentHistory = filteredHistory.slice(startIndex, endIndex);
+
+  // popup khi nộp bài 
+
+  const [showPopup, setShowPopup] = useState(false);
+  const [score, setScore] = useState(0);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    const result = localStorage.getItem("exam_result_popup");
+
+    if (result) {
+      const data = JSON.parse(result);
+
+      setScore(data.score);
+      setTotal(data.total);
+      setShowPopup(true);
+
+      localStorage.removeItem("exam_result_popup");
+    }
+  }, []);
 
   return (
     <div className="bg-gray-100 min-h-screen py-6">
@@ -92,63 +165,142 @@ const ExamDetail = () => {
                 Đã thi {history.length} lần
               </h2>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-center border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100 text-gray-600">
-                      <th className="px-8 py-3">Lần</th>
-                      <th className="px-8 py-3">Ngày</th>
-                      <th className="px-8 py-3">Điểm</th>
-                      <th className="px-8 py-3">Thời gian</th>
-                      <th className="px-8 py-3">Hành động</th>
-                    </tr>
-                  </thead>
+              {(() => {
+                // tìm lần thi điểm cao nhất
+                const highestIndex = history.reduce(
+                  (maxIndex, item, index, arr) =>
+                    item.score > arr[maxIndex].score ? index : maxIndex,
+                  0
+                );
 
-                  <tbody>
-                    {history.map((item, index) => (
-                      <tr
-                        key={index}
-                        className="bg-white hover:bg-gray-50 transition"
-                      >
-                        <td className="px-8 py-3">Lần {index + 1}</td>
+                const highestAttempt = history[highestIndex];
 
-                        <td className="px-8 py-3">
-                          {formatDateVN(item.date)}
-                        </td>
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-center border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100 text-gray-600">
+                          <th className="px-8 py-3">Lần</th>
+                          <th className="px-8 py-3">Ngày</th>
+                          <th className="px-8 py-3">Điểm</th>
+                          <th className="px-8 py-3">Thời gian</th>
+                          <th className="px-8 py-3">Hành động</th>
+                        </tr>
+                      </thead>
 
-                        <td className="px-8 py-3 font-semibold text-red-600 text-base">
-                          {item.score}
-                        </td>
+                      <tbody>
 
-                        <td className="px-8 py-3">{item.time}</td>
+                        {/* ===== HÀNG CAO NHẤT ===== */}
+                        <tr className="bg-yellow-50 font-semibold">
+                          <td className="px-8 py-3">🏆 Cao nhất</td>
 
-                        <td className="px-8 py-3      ">
-                          <button
-                            onClick={() =>
-                              navigate(`/exam-doing/${id}?review=${index}`)
-                            }
-                            className="
-  px-10
-  py-3
-  text-green-700
-  text-sm font-semibold
-  bg-white
-  hover:bg-green-600 hover:text-white hover:border-green-600
-  active:scale-95
-  transition-all duration-200 cursor-pointer
-  rounded-full
-"
+                          <td className="px-8 py-3">
+                            {formatDateVN(highestAttempt.date)}
+                          </td>
+
+                          <td className="px-8 py-3 text-red-600 text-base">
+                            {highestAttempt.score}/{highestAttempt.total}
+                          </td>
+
+                          <td className="px-8 py-3">
+                            {highestAttempt.time}
+                          </td>
+
+                          <td className="px-8 py-3">
+                            <button
+                              onClick={() =>
+                                navigate(`/exam-review/${id}`, {
+                                  state: {
+                                    attemptId: highestAttempt.attemptId,
+                                    examTitle: exam?.title
+                                  }
+                                })
+                              }
+                              className="px-10 py-3 text-green-700 text-sm font-semibold bg-white
+  hover:bg-green-600 hover:text-white transition-all rounded-full cursor-pointer"
+                            >
+                              XEM
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* ===== CÁC LẦN CÒN LẠI ===== */}
+                        {currentHistory.map((item, index) => (
+                          <tr
+                            key={index}
+                            className="bg-white hover:bg-gray-50 transition"
                           >
-                            XEM
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            <td className="px-8 py-3">
+                              Lần {startIndex + index + 1}
+                            </td>
+
+                            <td className="px-8 py-3">
+                              {formatDateVN(item.date)}
+                            </td>
+
+                            <td className="px-8 py-3 font-semibold text-red-600 text-base">
+                              {item.score}/{item.total}
+                            </td>
+
+                            <td className="px-8 py-3">
+                              {item.time}
+                            </td>
+
+                            <td className="px-8 py-3">
+                              <button
+                                onClick={() =>
+                                  navigate(`/exam-review/${id}`, {
+                                    state: {
+                                      attemptId: item.attemptId,
+                                      examTitle: exam?.title
+                                    }
+                                  })
+                                }
+                                className="px-10 py-3 text-green-700 text-sm font-semibold bg-white
+                        hover:bg-green-600 hover:text-white transition-all rounded-full cursor-pointer"
+                              >
+                                XEM
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           )}
+
+          {/* ===== PAGINATION ===== */}
+          <div className="flex justify-center items-center gap-4 mt-6">
+
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="w-9 h-9 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition"
+            >
+              ←
+            </button>
+
+            <span className="text-sm font-medium">
+              Trang {currentPage} / {totalPages}
+            </span>
+
+            <button
+              onClick={() =>
+                setCurrentPage((prev) =>
+                  Math.min(prev + 1, totalPages)
+                )
+              }
+              disabled={currentPage === totalPages}
+              className="w-9 h-9 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition"
+            >
+              →
+            </button>
+
+          </div>
 
           {/* ================== BẢNG XẾP HẠNG ================== */}
           <div className="mt-12 px-3">
@@ -164,7 +316,7 @@ const ExamDetail = () => {
                 Top thành viên điểm cao
               </h3>
 
-              {/* ================= TOP 3 ================= */}
+
               {/* ================= TOP 3 ================= */}
               <div className="flex justify-center items-end gap-6 sm:gap-12 mb-10">
 
@@ -288,7 +440,42 @@ const ExamDetail = () => {
 
         </div>
       </div>
-    </div>
+
+
+      {/* popup kết quả thi */}
+
+      {
+        showPopup && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-[400px] text-center shadow-lg">
+              <h2 className="text-xl font-bold text-green-600 mb-3">
+                🎉 Chúc mừng!
+              </h2>
+
+              <p className="text-gray-700 mb-6">
+                Bạn đã đạt <span className="font-bold text-blue-600">{score}</span> điểm
+              </p>
+
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setShowPopup(false)}
+                  className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                >
+                  Đóng
+                </button>
+
+                <button
+                  onClick={handleMockTest}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Làm lại
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
 
   );
 };

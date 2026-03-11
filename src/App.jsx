@@ -10,6 +10,7 @@ import { Toaster } from "react-hot-toast";
 import ExamDashboard from "./pages/ExamDashboard";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ExamReview from "./pages/ExamReview";
 
 const App = () => {
   return (
@@ -42,10 +43,17 @@ const App = () => {
           }
         />
         <Route path="/exam-doing/:id" element={<ProtectedRoute> <ExamDoing /> </ProtectedRoute>} />
+        <Route path="/exam-review/:id" element={<ProtectedRoute><ExamReview /></ProtectedRoute>} />
+        {/* xem lại bài */}
+        <Route
+          path="/exam-review/:attemptId"
+          element={
+            <ProtectedRoute>
+              <ExamDoing />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
-
-
-
     </>
   );
 };

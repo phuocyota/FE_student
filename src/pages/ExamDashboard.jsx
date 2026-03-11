@@ -91,7 +91,7 @@ const ExamDashboard = () => {
             <div className="grid grid-cols-4 text-gray-500 font-semibold mb-3">
               <span>Ngày</span>
               <span>Tên đề thi</span>
-              <span className="text-right">Điểm</span>
+              <span className="text-right">Số lần thi</span>
               <span className="text-right"> </span>
             </div>
 
