@@ -8,39 +8,51 @@ const ExamDetail = () => {
   const { examSetId, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const exam = location.state?.exam;
+
+  const exam =
+  location.state?.exam ||
+  JSON.parse(localStorage.getItem("current_exam"));
 
   const [history, setHistory] = useState([]);
-  const [examDetail, setExamDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const examTitle = exam?.title || "Đề thi";
+  
 
+  // load lịch sử làm bài
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(`exam_${id}`)) || [];
     setHistory(saved);
+    setLoading(false);
   }, [id]);
 
+  // redirect nếu không có exam
+  // useEffect(() => {
+  //   if (!loading && !exam) {
+  //     navigate(`/exam-set/${examSetId}`);
+  //   }
+  // }, [loading, exam, examSetId, navigate]);
+
+  // bắt đầu thi
   const handleMockTest = async () => {
     try {
       const payload = {
-        questionBankId: exam?.id,
+        questionBankId: id,   // ⚠️ phải dùng id từ params
         examSetId: examSetId
       };
 
       const res = await startAttempt(payload);
 
       if (res.success) {
-
         const attemptId = res.data.attemptId;
         const questions = res.data.questions;
 
-        navigate(`/exam-doing/${exam.id}`, {
+        navigate(`/exam-doing/${id}`, {
           state: {
             attemptId,
             questions
           }
         });
-
       }
 
     } catch (error) {
@@ -48,7 +60,7 @@ const ExamDetail = () => {
     }
   };
 
-
+  // format ngày
   const formatDateVN = (dateString) => {
     const date = new Date(dateString);
 
@@ -59,30 +71,25 @@ const ExamDetail = () => {
     });
   };
 
+  // tìm lần thi cao nhất
+  const highestIndex = history.length
+    ? history.reduce(
+        (maxIndex, item, index, arr) =>
+          item.score > arr[maxIndex].score ? index : maxIndex,
+        0
+      )
+    : -1;
 
-  useEffect(() => {
-    if (!exam) {
-      navigate(`/exam-set/${examSetId}`);
-    }
-  }, []);
-
-
-  //phân trang 
-  // tìm lần thi điểm cao nhất
-  const highestIndex = history.reduce(
-    (maxIndex, item, index, arr) =>
-      item.score > arr[maxIndex].score ? index : maxIndex,
-    0
-  );
-
-  const highestAttempt = history[highestIndex];
+  const highestAttempt = highestIndex !== -1 ? history[highestIndex] : null;
 
   // phân trang
   const [currentPage, setCurrentPage] = useState(1);
-
   const itemsPerPage = 10;
 
-  const filteredHistory = history.filter((_, index) => index !== highestIndex);
+  const filteredHistory =
+    highestIndex !== -1
+      ? history.filter((_, index) => index !== highestIndex)
+      : history;
 
   const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
 
@@ -91,8 +98,7 @@ const ExamDetail = () => {
 
   const currentHistory = filteredHistory.slice(startIndex, endIndex);
 
-  // popup khi nộp bài 
-
+  // popup kết quả
   const [showPopup, setShowPopup] = useState(false);
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);

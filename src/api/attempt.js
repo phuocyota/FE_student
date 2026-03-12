@@ -55,3 +55,17 @@ export const getAttemptReview = async (attemptId) => {
 
   return res.json();
 };
+
+// lấy lịch sử thi
+export const getExamHistory = async (fromDate, toDate) => {
+  const res = await fetch(
+    `${import.meta.env.VITE_API_BASE_URL}/attempt/exam-history?fromDate=${fromDate}&toDate=${toDate}`,
+    {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+    }
+  );
+
+  return res.json();
+};

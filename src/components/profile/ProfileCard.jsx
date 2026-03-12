@@ -1,8 +1,10 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import defaultAvatar from "../../assets/avatar.png";
+import { uploadAvatar, updateUserAvatar } from "../../api/student";
 
 const ProfileCard = ({ user, setUser, isEditing, setIsEditing }) => {
   const fileInputRef = useRef();
+  const [previewAvatar, setPreviewAvatar] = useState(null);
 
   const handleAvatarClick = () => {
     if (isEditing) {
@@ -10,14 +12,53 @@ const ProfileCard = ({ user, setUser, isEditing, setIsEditing }) => {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setUser({
+    if (!file) return;
+
+    // preview ảnh ngay
+    const previewUrl = URL.createObjectURL(file);
+    setPreviewAvatar(previewUrl);
+
+    try {
+      // upload ảnh
+      const uploadRes = await uploadAvatar(file);
+
+      // console.log("UPLOAD RESPONSE:", uploadRes);
+
+      // API trả path
+      const avatarPath =
+        uploadRes.data.path || uploadRes.data.data.path;
+
+      const userId = localStorage.getItem("userId");
+
+      const updateData = {
+        email: user.email,
+        phoneNumber: user.parentPhone,
+        note: user.goal,
+        avatar: avatarPath,
+      };
+
+      // update user
+      const res = await updateUserAvatar(userId, updateData);
+
+      const updatedUser = res.data?.data || res.data;
+
+      const mappedUser = {
         ...user,
-        avatar: imageUrl,
-      });
+        avatar: updatedUser.avatar,
+        email: updatedUser.email,
+        parentPhone: updatedUser.phoneNumber,
+        goal: updatedUser.note,
+      };
+
+      setUser(mappedUser);
+
+      // reset preview sau khi update thành công
+      setPreviewAvatar(null);
+
+    } catch (error) {
+      console.error("Upload avatar error:", error);
     }
   };
 
@@ -30,7 +71,13 @@ const ProfileCard = ({ user, setUser, isEditing, setIsEditing }) => {
         className="relative cursor-pointer"
       >
         <img
-          src={user.avatar || defaultAvatar}
+          src={
+            previewAvatar
+              ? previewAvatar
+              : user.avatar
+              ? `${import.meta.env.VITE_API_BASE_URL}/${user.avatar}`
+              : defaultAvatar
+          }
           alt="avatar"
           className="w-32 h-32 rounded-full object-cover border-4 border-green-500"
         />

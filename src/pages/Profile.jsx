@@ -1,23 +1,59 @@
- import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ProfileCard from "../components/profile/ProfileCard";
 import ProfileInfo from "../components/profile/ProfileInfo";
 import ProfileStats from "../components/profile/ProfileStats";
+import { getUserById } from "../api/student";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   const [user, setUser] = useState({
-    fullName: "Lê Nguyễn",
-    studentId: "111334475",
-    className: "5A1",
-    school: "Trường Tiểu học ABC",
-    dob: "2015-09-12",
-    gender: "Nam",
-    email: "lenguyen@gmail.com",
-    parentPhone: "0901234567",
-    goal: "Đạt học sinh giỏi",
-     avatar: null, 
+    fullName: "",
+    studentId: "",
+    className: "",
+    school: "",
+    dob: "",
+    gender: "",
+    email: "",
+    parentPhone: "",
+    goal: "",
+    avatar: null,
   });
+
+  // load profile khi vào trang
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userId = localStorage.getItem("userId");
+
+        if (!userId) return;
+
+        const res = await getUserById(userId);
+
+        const data = res.data;
+
+        const mappedUser = {
+          fullName: data.fullName,
+          email: data.email,
+          parentPhone: data.phoneNumber,
+          goal: data.note,
+          avatar: data.avatar,
+          dob: data.birthday,
+          gender: data.gender,
+        };
+
+        setUser((prev) => ({
+          ...prev,
+          ...mappedUser
+        }));
+
+      } catch (error) {
+        console.error("Fetch user error:", error);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   return (
     <div className="bg-gray-100 min-h-screen py-8 px-4">
@@ -25,7 +61,7 @@ const Profile = () => {
 
         <ProfileCard
           user={user}
-          setUser={setUser} 
+          setUser={setUser}
           isEditing={isEditing}
           setIsEditing={setIsEditing}
         />

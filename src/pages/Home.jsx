@@ -82,7 +82,7 @@ const Home = () => {
                         ? `${baseUrl}/${subject.examSets[0].image}`
                         : "https://via.placeholder.com/120"
                     }
-                    className="w-28 h-20 object-cover rounded-lg"
+                    className="w-38 h-20 object-cover rounded-lg"
                   />
 
                   {/* CONTENT */}
