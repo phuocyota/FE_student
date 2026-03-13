@@ -202,23 +202,23 @@ const Header = () => {
   return (
     <header className="bg-green-700 text-white relative">
       {/* {/* <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between"> */}
-     <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
 
         <div className="flex items-center">
-  <div className="w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden shrink-0">
-    <Link to="/">
-      <img
-        src={logo}
-        alt="logo"
-        className="w-full h-full object-cover cursor-pointer"
-      />
-    </Link>
-  </div>
-</div>
+          <div className="w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden shrink-0">
+            <Link to="/">
+              <img
+                src={logo}
+                alt="logo"
+                className="w-full h-full object-cover cursor-pointer"
+              />
+            </Link>
+          </div>
+        </div>
 
         {/* MENU CENTER */}
         <nav className=" flex justify-center items-center gap-6 md:gap-8  ">
-         
+
           {/* THI */}
           <div
             ref={generalRef}
@@ -436,7 +436,15 @@ whitespace-nowrap
                                 subject.examSets.map((exam) => (
                                   <li
                                     key={exam.id}
-                                   onClick={() => navigate(`/exam-set/${exam.id}`)}
+                                    onClick={() => {
+                                      setShowMega(false);
+                                      setPinned(false);
+
+                                      // setShowLanguageMega(false);
+                                      // setPinnedLanguage(false);
+
+                                      navigate(`/exam-set/${exam.id}`);
+                                    }}
                                     className="hover:text-green-600 cursor-pointer"
                                   >
                                     {exam.title}
@@ -503,7 +511,15 @@ whitespace-nowrap
                                     <li
                                       key={exam.id}
                                       // onClick={() => navigate(`/exam-set/${examSet.id}`)}
-                                      onClick={() => navigate(`/exam-set/${exam.id}`)}
+                                      onClick={() => {
+                                      setShowMega(false);
+                                      setPinned(false);
+
+                                      // setShowLanguageMega(false);
+                                      // setPinnedLanguage(false);
+
+                                      navigate(`/exam-set/${exam.id}`);
+                                    }}
                                       className="hover:text-green-600 cursor-pointer"
                                     >
                                       {exam.title}
@@ -584,7 +600,8 @@ whitespace-nowrap
                       {Object.keys(englishData).map((grade) => (
                         <div
                           key={grade}
-                          onClick={() => setSelectedEnglishGrade(grade)}
+                          onClick={() =>
+                             setSelectedEnglishGrade(grade)}
                           className={`px-4 py-2 rounded-lg cursor-pointer mb-1 transition
           ${selectedEnglishGrade === grade
                               ? "bg-yellow-500 text-white"
