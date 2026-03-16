@@ -472,7 +472,7 @@ const ExamDetail = () => {
 
                 <button
                   onClick={handleMockTest}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
                   Làm lại
                 </button>

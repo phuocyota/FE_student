@@ -9,6 +9,8 @@ const ExamDoing = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const { id } = useParams();
 
   const attemptId = location.state?.attemptId;
@@ -138,6 +140,32 @@ const ExamDoing = () => {
 
   const confirmExit = () => navigate(-1);
 
+  // hiển thị hình ảnh 
+  const renderChainContent = (chain) => {
+    return chain.map((item) => {
+      if (item.contentType === "IMAGE") {
+        return (
+          <img
+          key={item.id}
+          src={`${BASE_URL}/${item.content}`}
+          alt=""
+          className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
+        />
+        );
+      }
+
+      if (item.contentType === "TEXT") {
+        return (
+          <p key={item.id} className="my-2">
+            {item.content}
+          </p>
+        );
+      }
+
+      return null;
+    });
+  };
+
   return (
 
     <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50 overflow-hidden">
@@ -146,36 +174,36 @@ const ExamDoing = () => {
 
       <div className="bg-white border-b border-gray-200 px-4 py-3">
 
-  <div className="flex items-center">
+        <div className="flex items-center">
 
-    {/* BACK BUTTON */}
-    <button
-      onClick={() => setShowExitModal(true)}
-      className="hidden md:flex w-10 h-10 rounded-full bg-gray-200 items-center justify-center hover:bg-gray-300 cursor-pointer mr-4"
-    >
-      <ArrowLeft size={18} />
-    </button>
+          {/* BACK BUTTON */}
+          <button
+            onClick={() => setShowExitModal(true)}
+            className="hidden md:flex w-10 h-10 rounded-full bg-gray-200 items-center justify-center hover:bg-gray-300 cursor-pointer mr-4"
+          >
+            <ArrowLeft size={18} />
+          </button>
 
-    {/* HEADER CENTER */}
-    <div className="flex-1 flex justify-center md:pr-80">
+          {/* HEADER CENTER */}
+          <div className="flex-1 flex justify-center md:pr-80">
 
-      <div className="flex gap-8 text-sm font-medium">
+            <div className="flex gap-8 text-sm font-medium">
 
-        <span className="border-b-2 border-green-600 pb-1">
-          Tất cả ({questions.length})
-        </span>
+              <span className="border-b-2 border-green-600 pb-1">
+                Tất cả ({questions.length})
+              </span>
 
-        <span className="text-gray-500">
-          ○ Chưa làm ({notAnsweredCount})
-        </span>
+              <span className="text-gray-500">
+                ○ Chưa làm ({notAnsweredCount})
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
 
       </div>
-
-    </div>
-
-  </div>
-
-</div>
 
 
       {/* BODY */}
@@ -200,9 +228,12 @@ const ExamDoing = () => {
                   Câu {question.orderNo}
                 </span>
 
-                <p className="my-4 font-medium">
+                {/* <p className="my-4 font-medium">
                   {question.content}
-                </p>
+                </p> */}
+                <div className="my-4 font-medium">
+                  {renderChainContent(question.chain)}
+                </div>
 
                 {question.answers.map((answer, i) => {
 
@@ -221,8 +252,12 @@ const ExamDoing = () => {
                         }`}
                     >
 
-                      <div>
+                      {/* <div>
                         <strong>{label}.</strong> {answer.content}
+                      </div> */}
+                      <div>
+                        <strong>{label}. </strong>
+                        {renderChainContent(answer.chain)}
                       </div>
 
                     </div>
@@ -346,7 +381,7 @@ const ExamDoing = () => {
           {/* DESKTOP BUTTON */}
 
           <div className="hidden md:flex p-5 justify-between border-t border-gray-200">
-            
+
 
             <button
               onClick={() => setShowExitModal(true)}
@@ -368,7 +403,7 @@ const ExamDoing = () => {
 
       </div>
 
-      
+
       {/* thoát model */}
 
       {showExitModal && (

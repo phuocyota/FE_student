@@ -7,6 +7,7 @@ const ExamReview = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const attemptId = location.state?.attemptId;
 
@@ -28,12 +29,12 @@ const ExamReview = () => {
         const res = await getAttemptReview(attemptId);
 
         if (res.success) {
-  setQuestions(res.data.questions);
-  setExamInfo({
-    questionBankId: res.data.questionBankId,
-    examSetId: res.data.examSetId
-  });
-}
+          setQuestions(res.data.questions);
+          setExamInfo({
+            questionBankId: res.data.questionBankId,
+            examSetId: res.data.examSetId
+          });
+        }
 
       } catch (error) {
         console.error("Review error:", error);
@@ -47,31 +48,31 @@ const ExamReview = () => {
 
   const handleRedo = async () => {
 
-  try {
+    try {
 
-    const res = await startAttempt({
-      questionBankId: examInfo.questionBankId,
-      examSetId: examInfo.examSetId
-    });
-
-    if (res.success) {
-
-      navigate(`/exam-doing/${examInfo.questionBankId}`, {
-        state: {
-          attemptId: res.data.attemptId,
-          questions: res.data.questions
-        }
+      const res = await startAttempt({
+        questionBankId: examInfo.questionBankId,
+        examSetId: examInfo.examSetId
       });
+
+      if (res.success) {
+
+        navigate(`/exam-doing/${examInfo.questionBankId}`, {
+          state: {
+            attemptId: res.data.attemptId,
+            questions: res.data.questions
+          }
+        });
+
+      }
+
+    } catch (error) {
+
+      console.error(error);
 
     }
 
-  } catch (error) {
-
-    console.error(error);
-
-  }
-
-};
+  };
 
 
   /* ===== THỐNG KÊ ===== */
@@ -86,6 +87,38 @@ const ExamReview = () => {
     q => !q.selectedAnswerIds?.length
   ).length;
 
+  // hiển thị hình ảnh trogn câu hỏi 
+  const renderChainContent = (chain) => {
+
+    if (!chain) return null;
+
+    return chain.map((item) => {
+
+      if (item.contentType === "IMAGE") {
+        return (
+          <img
+          key={item.id}
+          src={`${BASE_URL}/${item.content}`}
+          alt=""
+          className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
+        />
+        );
+      }
+
+      if (item.contentType === "TEXT") {
+        return (
+          <p key={item.id} className="my-1">
+            {item.content}
+          </p>
+        );
+      }
+
+      return null;
+
+    });
+
+  };
+
   return (
 
     <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50 overflow-hidden">
@@ -94,81 +127,81 @@ const ExamReview = () => {
 
       <div className="bg-white border-b border-gray-200 px-4 py-3">
 
-  <div className="flex items-center">
+        <div className="flex items-center">
 
-    {/* BACK BUTTON */}
-    <button
-      onClick={() => navigate(-1)}
-      className="hidden md:flex w-10 h-10 rounded-full bg-gray-200 items-center justify-center mr-4 cursor-pointer "
-    >
-      <ArrowLeft size={18} />
-    </button>
+          {/* BACK BUTTON */}
+          <button
+            onClick={() => navigate(-1)}
+            className="hidden md:flex w-10 h-10 rounded-full bg-gray-200 items-center justify-center mr-4 cursor-pointer "
+          >
+            <ArrowLeft size={18} />
+          </button>
 
-    {/* MOBILE HEADER (SCROLL) */}
-    <div className="flex-1 overflow-x-auto md:hidden">
+          {/* MOBILE HEADER (SCROLL) */}
+          <div className="flex-1 overflow-x-auto md:hidden">
 
-      <div className="flex gap-6 text-sm font-medium whitespace-nowrap w-max">
+            <div className="flex gap-6 text-sm font-medium whitespace-nowrap w-max">
 
-        <span>Tất cả ({questions.length})</span>
+              <span>Tất cả ({questions.length})</span>
 
-        <span className="flex items-center gap-2 text-green-600">
-          <span className="w-3 h-3 rounded-full bg-green-600"></span>
-          Đúng ({correctCount})
-        </span>
+              <span className="flex items-center gap-2 text-green-600">
+                <span className="w-3 h-3 rounded-full bg-green-600"></span>
+                Đúng ({correctCount})
+              </span>
 
-        <span className="flex items-center gap-2 text-red-600">
-          <span className="w-3 h-3 rounded-full bg-red-600"></span>
-          Sai ({wrongCount})
-        </span>
+              <span className="flex items-center gap-2 text-red-600">
+                <span className="w-3 h-3 rounded-full bg-red-600"></span>
+                Sai ({wrongCount})
+              </span>
 
-        <span className="flex items-center gap-2 text-gray-500">
-          <span className="w-3 h-3 rounded-full bg-gray-500"></span>
-          Tự luận (0)
-        </span>
+              <span className="flex items-center gap-2 text-gray-500">
+                <span className="w-3 h-3 rounded-full bg-gray-500"></span>
+                Tự luận (0)
+              </span>
 
-        <span className="flex items-center gap-2 text-gray-500">
-          <span className="w-3 h-3 rounded-full border border-gray-400"></span>
-          Chưa làm ({notAnsweredCount})
-        </span>
+              <span className="flex items-center gap-2 text-gray-500">
+                <span className="w-3 h-3 rounded-full border border-gray-400"></span>
+                Chưa làm ({notAnsweredCount})
+              </span>
+
+            </div>
+
+          </div>
+
+          {/* DESKTOP HEADER (CENTER) */}
+          <div className="hidden md:flex flex-1 justify-center">
+
+            <div className="flex gap-8 text-sm font-medium">
+
+              <span>Tất cả ({questions.length})</span>
+
+              <span className="flex items-center gap-2 text-green-600">
+                <span className="w-3 h-3 rounded-full bg-green-600"></span>
+                Đúng ({correctCount})
+              </span>
+
+              <span className="flex items-center gap-2 text-red-600">
+                <span className="w-3 h-3 rounded-full bg-red-600"></span>
+                Sai ({wrongCount})
+              </span>
+
+              <span className="flex items-center gap-2 text-gray-500">
+                <span className="w-3 h-3 rounded-full bg-gray-500"></span>
+                Tự luận (0)
+              </span>
+
+              <span className="flex items-center gap-2 text-gray-500">
+                <span className="w-3 h-3 rounded-full border border-gray-400"></span>
+                Chưa làm ({notAnsweredCount})
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
 
       </div>
-
-    </div>
-
-    {/* DESKTOP HEADER (CENTER) */}
-    <div className="hidden md:flex flex-1 justify-center">
-
-      <div className="flex gap-8 text-sm font-medium">
-
-        <span>Tất cả ({questions.length})</span>
-
-        <span className="flex items-center gap-2 text-green-600">
-          <span className="w-3 h-3 rounded-full bg-green-600"></span>
-          Đúng ({correctCount})
-        </span>
-
-        <span className="flex items-center gap-2 text-red-600">
-          <span className="w-3 h-3 rounded-full bg-red-600"></span>
-          Sai ({wrongCount})
-        </span>
-
-        <span className="flex items-center gap-2 text-gray-500">
-          <span className="w-3 h-3 rounded-full bg-gray-500"></span>
-          Tự luận (0)
-        </span>
-
-        <span className="flex items-center gap-2 text-gray-500">
-          <span className="w-3 h-3 rounded-full border border-gray-400"></span>
-          Chưa làm ({notAnsweredCount})
-        </span>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
 
       {/* BODY */}
 
@@ -204,9 +237,13 @@ const ExamReview = () => {
 
                 </div>
 
-                <p className="font-medium mb-4">
+                {/* <p className="font-medium mb-4">
                   {question.content}
-                </p>
+                </p> */}
+
+                <div className="font-medium mb-4">
+                  {renderChainContent(question.chain)}
+                </div>
 
 
                 {/* ANSWERS */}
@@ -219,17 +256,20 @@ const ExamReview = () => {
                     <div
                       key={answer.id}
                       className={`p-4 mb-3 border border-gray-200 rounded-lg flex justify-between
-                      ${
-                        answer.isCorrect
+                      ${answer.isCorrect
                           ? "bg-green-50 border-green-500"
                           : answer.isSelected
-                          ? "bg-red-50 border-red-500"
-                          : ""
-                      }`}
+                            ? "bg-red-50 border-red-500"
+                            : ""
+                        }`}
                     >
 
-                      <div>
+                      {/* <div>
                         <strong>{label}.</strong> {answer.content}
+                      </div> */}
+                      <div>
+                        <strong>{label}. </strong>
+                        {renderChainContent(answer.chain)}
                       </div>
 
                       {answer.isCorrect && (
@@ -295,13 +335,12 @@ const ExamReview = () => {
                     })
                   }
                   className={`w-8 h-8 text-xs rounded border border-gray-200
-                  ${
-                    q.isCorrect
+                  ${q.isCorrect
                       ? "bg-green-600 text-white"
                       : q.selectedAnswerIds?.length
-                      ? "bg-red-500 text-white"
-                      : "bg-gray-100"
-                  }`}
+                        ? "bg-red-500 text-white"
+                        : "bg-gray-100"
+                    }`}
                 >
                   {q.orderNo}
                 </button>
@@ -316,10 +355,10 @@ const ExamReview = () => {
           {/* MOBILE BAR */}
 
           <div className="md:hidden p-4 border-t border-gray-200">
-             {/* TÊN BÀI THI */}
-  <p className="text-sm font-semibold mb-3 ">
-    {examTitle}
-  </p>
+            {/* TÊN BÀI THI */}
+            <p className="text-sm font-semibold mb-3 ">
+              {examTitle}
+            </p>
 
             <div className="flex justify-between">
 
