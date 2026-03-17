@@ -134,6 +134,11 @@ const Header = () => {
   // đăng nhập 
   const [user, setUser] = useState(() => localStorage.getItem("user"));
 
+   useEffect(() => {
+  const storedUser = localStorage.getItem("user");
+  setUser(storedUser);
+}, [location.pathname]);
+
 useEffect(() => {
   const fetchUser = async () => {
     const token = localStorage.getItem("accessToken");
@@ -144,7 +149,7 @@ useEffect(() => {
     try {
       const res = await getUserById(id);
 
-      const data = res.data;
+      const data = res.data.data;
 
       const name = data.fullName || data.userName;
 
@@ -223,34 +228,7 @@ useEffect(() => {
     };
   }, [showLanguageMega]);
 
-  // lấy thông tin user khi đăng nhập app để hiển thị trong menu
-  useEffect(() => {
-  const loadUser = async () => {
-    const token = localStorage.getItem("accessToken");
-    const id = localStorage.getItem("userId");
-
-    if (!token || !id) return;
-
-    try {
-      const res = await getUserById(id);
-
-      const data = res.data;
-
-      const name = data.fullName || data.userName;
-
-      localStorage.setItem("user", name);
-
-      setUser(name);
-
-    } catch (err) {
-      console.error("Lỗi load user:", err);
-    }
-  };
-
-  if (!localStorage.getItem("user")) {
-    loadUser();
-  }
-}, []);
+   
 
   return (
     <header className="bg-green-700 text-white relative">

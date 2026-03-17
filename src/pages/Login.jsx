@@ -174,6 +174,7 @@ import logo from "../assets/kido.jpg";
 import toast from "react-hot-toast";
 import cancelIcon from "../assets/cancle.png";
 import { loginStudent } from "../api/auth";
+import { getUserById } from "../api/student";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -203,6 +204,63 @@ const Login = () => {
     });
   };
 
+  //   const handleSubmit = async (e) => {
+  //     e.preventDefault();
+  //     setError("");
+  //     setIsSubmitting(true);
+
+  //     try {
+  //       const response = await loginStudent({
+  //         username: form.id,
+  //         password: form.password,
+  //         deviceId: "web-browser",
+  //       });
+
+  //       console.log("LOGIN RESPONSE:", response);
+
+  //       const payload = response?.data?.data || response?.data || response;
+
+  //       const accessToken = payload?.accessToken;
+  //       const userId = payload?.userId;
+  //       const userType = payload?.userType;
+
+  //       if (!accessToken) {
+  //         throw new Error("Không nhận được accessToken");
+  //       }
+
+  //       // lưu token
+  //       // localStorage.setItem("accessToken", accessToken);
+  //       // localStorage.setItem("userId", userId);
+  //       // localStorage.setItem("userType", userType);
+  //       // localStorage.setItem("user", form.id);
+
+  //       const res = await getUserById(userId);
+  // const name = res.data.userName || res.data.fullName;
+
+  // localStorage.setItem("user", name);
+  // localStorage.setItem("accessToken", accessToken);
+  // localStorage.setItem("userId", userId);
+
+  // toast.success("Đăng nhập thành công!");
+  // navigate("/");
+
+  //       //setUser(form.id);
+
+
+  //       // navigate("/");
+
+  //     } catch (submitError) {
+  //       const message =
+  //         submitError?.response?.data?.message ||
+  //         submitError.message ||
+  //         "Sai ID hoặc mật khẩu!";
+
+  //       setError(message);
+  //       toast.error(message);
+  //     } finally {
+  //       setIsSubmitting(false);
+  //     }
+  //   };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -227,13 +285,20 @@ const Login = () => {
         throw new Error("Không nhận được accessToken");
       }
 
-      // lưu token
+      // 1️⃣ lưu token trước
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userType", userType);
-      // localStorage.setItem("user", form.id);
 
-      //setUser(form.id);
+      // 2️⃣ gọi API lấy thông tin user
+      const res = await getUserById(userId);
+
+      const userData = res.data; // đúng theo API bạn gửi trước
+
+      const name = userData.fullName || userData.userName;
+
+      // 3️⃣ lưu user
+      localStorage.setItem("user", name);
 
       toast.success("Đăng nhập thành công!");
 
@@ -251,7 +316,6 @@ const Login = () => {
       setIsSubmitting(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-6">
       <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
