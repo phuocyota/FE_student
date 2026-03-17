@@ -418,7 +418,7 @@ whitespace-nowrap
       fixed md:absolute
       top-[120px] md:top-10
       left-1/2 -translate-x-1/2
-      w-[95%] md:w-screen
+      w-[95%] md:w-[900px]
       max-w-[1200px]
       bg-white rounded-2xl shadow-2xl
       p-4 md:p-8
@@ -616,7 +616,7 @@ whitespace-nowrap
               fixed md:absolute
               top-[120px] md:top-10
               left-1/2 -translate-x-1/2
-              w-[95%] md:w-screen
+              w-[95%] md:w-[800px] 
               max-w-[1000px]
               bg-white rounded-2xl shadow-2xl
               p-4 md:p-8
@@ -656,7 +656,7 @@ whitespace-nowrap
                   </div>
 
                   {/* MOBILE */}
-                  <div className="md:hidden">+
+                  <div className="md:hidden">
 
                     {!selectedEnglishGrade && (
                       <div className="space-y-3">
