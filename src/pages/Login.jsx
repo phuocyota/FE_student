@@ -23,20 +23,6 @@
 //     });
 //   };
 
-//   const resolveUserName = (payload) =>
-//     payload?.user?.fullName ||
-//     payload?.user?.name ||
-//     payload?.fullName ||
-//     payload?.name ||
-//     payload?.username ||
-//     form.id;
-
-//   const resolveUserId = (payload) =>
-//     payload?.user?.id ||
-//     payload?.userId ||
-//     payload?.id ||
-//     form.id;
-
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
 //     setError("");
@@ -49,26 +35,36 @@
 //         deviceId: "web-browser",
 //       });
 
-//       const accessToken =
-//         response?.accessToken || response?.token || response?.data?.accessToken;
-//       const refreshToken =
-//         response?.refreshToken || response?.data?.refreshToken;
+//       console.log("LOGIN RESPONSE:", response);
 
-//       localStorage.setItem("user", resolveUserName(response));
-//       localStorage.setItem("userId", resolveUserId(response));
+//       // Lấy đúng dữ liệu từ API
+//       const payload = response?.data?.data || response?.data || response;
 
-//       if (accessToken) {
-//         localStorage.setItem("accessToken", accessToken);
+//       const accessToken = payload?.accessToken;
+//       const userId = payload?.userId;
+//       const userType = payload?.userType;
+
+//       if (!accessToken) {
+//         throw new Error("Không nhận được accessToken");
 //       }
 
-//       if (refreshToken) {
-//         localStorage.setItem("refreshToken", refreshToken);
-//       }
+//       // Lưu vào localStorage
+
+//       localStorage.setItem("accessToken", accessToken);
+//       localStorage.setItem("userId", userId);
+//       localStorage.setItem("userType", userType);
+//       localStorage.setItem("user", form.id);
 
 //       toast.success("Đăng nhập thành công!");
+
 //       navigate("/");
+
 //     } catch (submitError) {
-//       const message = submitError.message || "Sai ID hoặc mật khẩu!";
+//       const message =
+//         submitError?.response?.data?.message ||
+//         submitError.message ||
+//         "Sai ID hoặc mật khẩu!";
+
 //       setError(message);
 //       toast.error(message);
 //     } finally {
@@ -80,7 +76,7 @@
 //     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-6">
 //       <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
 
-//         {/* LEFT SIDE - LOGO */}
+//         {/* LEFT SIDE */}
 //         <div className="hidden md:flex flex-col items-center justify-center bg-green-700 text-white p-10">
 
 //           <img
@@ -95,18 +91,17 @@
 
 //         </div>
 
-//         {/* RIGHT SIDE - FORM */}
+//         {/* RIGHT SIDE */}
 //         <div className="flex items-center justify-center p-10">
 
 //           <div className="w-full max-w-md relative">
-//           {/* Cancel Button */}
-//           <img
-//             src={cancelIcon}
-//             alt="cancel"
-//             onClick={() => navigate("/")}
-//             className="w-6 h-6 absolute top-0 right-0 cursor-pointer hover:scale-110 transition"
-//           />
 
+//             <img
+//               src={cancelIcon}
+//               alt="cancel"
+//               onClick={() => navigate("/")}
+//               className="w-6 h-6 absolute top-0 right-0 cursor-pointer hover:scale-110 transition"
+//             />
 
 //             <h2 className="text-2xl font-bold text-green-700 mb-8 text-center">
 //               Đăng nhập
@@ -114,11 +109,11 @@
 
 //             <form onSubmit={handleSubmit} className="space-y-6">
 
-//               {/* ID */}
 //               <div>
 //                 <label className="block text-sm font-medium mb-2">
 //                   ID
 //                 </label>
+
 //                 <input
 //                   type="text"
 //                   name="id"
@@ -130,11 +125,11 @@
 //                 />
 //               </div>
 
-//               {/* Password */}
 //               <div>
 //                 <label className="block text-sm font-medium mb-2">
 //                   Mật khẩu
 //                 </label>
+
 //                 <input
 //                   type="password"
 //                   name="password"
@@ -146,14 +141,12 @@
 //                 />
 //               </div>
 
-//               {/* ERROR MESSAGE */}
 //               {error && (
 //                 <div className="text-red-500 text-sm text-center">
 //                   {error}
 //                 </div>
 //               )}
 
-//               {/* Button */}
 //               <button
 //                 type="submit"
 //                 disabled={isSubmitting}
@@ -175,8 +168,7 @@
 
 // export default Login;
 
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kido.jpg";
 import toast from "react-hot-toast";
@@ -193,6 +185,16 @@ const Login = () => {
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ⭐ kiểm tra token từ WebView2
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+
+    if (token) {
+      console.log("Token tồn tại, auto login");
+      navigate("/");
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     setForm({
@@ -215,7 +217,6 @@ const Login = () => {
 
       console.log("LOGIN RESPONSE:", response);
 
-      // Lấy đúng dữ liệu từ API
       const payload = response?.data?.data || response?.data || response;
 
       const accessToken = payload?.accessToken;
@@ -226,8 +227,7 @@ const Login = () => {
         throw new Error("Không nhận được accessToken");
       }
 
-      // Lưu vào localStorage
-
+      // lưu token
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userType", userType);
@@ -254,7 +254,7 @@ const Login = () => {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-6">
       <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
 
-        {/* LEFT SIDE */}
+        {/* LEFT */}
         <div className="hidden md:flex flex-col items-center justify-center bg-green-700 text-white p-10">
 
           <img
@@ -269,7 +269,7 @@ const Login = () => {
 
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT */}
         <div className="flex items-center justify-center p-10">
 
           <div className="w-full max-w-md relative">
