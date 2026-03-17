@@ -4,13 +4,13 @@ import mockExamData from "../datas/mockExamData";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { submitAttempt } from "../api/attempt";
+import { buildAssetUrl } from "../api/client";
 
 const ExamDoing = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const { id } = useParams();
 
   const attemptId = location.state?.attemptId;
@@ -147,7 +147,7 @@ const ExamDoing = () => {
         return (
           <img
           key={item.id}
-          src={`${BASE_URL}/${item.content}`}
+          src={buildAssetUrl(item.content)}
           alt=""
           className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
         />

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import defaultAvatar from "../../assets/avatar.png";
 import { uploadAvatar, updateUserAvatar } from "../../api/student";
+import { buildAssetUrl } from "../../api/client";
 
 const ProfileCard = ({ user, setUser, isEditing, setIsEditing }) => {
   const fileInputRef = useRef();
@@ -75,7 +76,7 @@ const ProfileCard = ({ user, setUser, isEditing, setIsEditing }) => {
             previewAvatar
               ? previewAvatar
               : user.avatar
-              ? `${import.meta.env.VITE_API_BASE_URL}/${user.avatar}`
+              ? buildAssetUrl(user.avatar)
               : defaultAvatar
           }
           alt="avatar"

@@ -2,9 +2,40 @@ import React, { useEffect, useState } from "react";
 import { getGrades } from "../api/grade";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { buildAssetUrl } from "../api/client";
+
+const SubjectImage = ({ image, alt }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  if (!image) {
+    return (
+      <div className="w-38 h-20 rounded-lg bg-gray-100" />
+    );
+  }
+
+  return (
+    <div className="relative w-38 h-20 rounded-lg overflow-hidden bg-gray-100">
+      {!isLoaded && (
+        <div className="absolute inset-0 animate-pulse bg-gray-100" />
+      )}
+
+      <img
+        src={buildAssetUrl(image)}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setIsLoaded(true)}
+        className={`w-38 h-20 object-cover rounded-lg transition-opacity duration-200 ${
+          isLoaded ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </div>
+  );
+};
+
 const Home = () => {
   const navigate = useNavigate();
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,13 +107,9 @@ const Home = () => {
                 >
 
                   {/* IMAGE */}
-                  <img
-                    src={
-                      subject.examSets?.[0]?.image
-                        ? `${baseUrl}/${subject.examSets[0].image}`
-                        : "https://via.placeholder.com/120"
-                    }
-                    className="w-38 h-20 object-cover rounded-lg"
+                  <SubjectImage
+                    image={subject.examSets?.[0]?.image}
+                    alt={subject.name}
                   />
 
                   {/* CONTENT */}

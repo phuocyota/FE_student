@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Clock, Heart } from "lucide-react";
-import axios from "axios";
+import { fetch, parseResponse } from "../api/client";
+import { API } from "../api/endpoint";
 
 const ExamList = () => {
   const navigate = useNavigate();
-  const { examSetId } = useParams(); // id exam-set
+  const { examSetId } = useParams();
 
   const [examData, setExamData] = useState([]);
   const [search, setSearch] = useState("");
@@ -13,16 +14,18 @@ const ExamList = () => {
 
   const itemsPerPage = 10;
 
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
-
-  // ================= CALL API =================
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        const res = await axios.get(`${baseUrl}/exam-set/${examSetId}`);
+        const res = await fetch(API.EXAM_SET.DETAIL(examSetId));
+        const payload = await parseResponse(res);
 
-        if (res.data.success) {
-          const questionBanks = res.data.data.questionBanks;
+        {
+          const questionBanks =
+            payload?.data?.data?.questionBanks ||
+            payload?.data?.questionBanks ||
+            payload?.questionBanks ||
+            [];
 
           const formatted = questionBanks.map((item) => ({
             id: item.id,
@@ -42,19 +45,14 @@ const ExamList = () => {
     fetchExam();
   }, [examSetId]);
 
-  // ================= SEARCH =================
+    // ================= SEARCH =================
   const filtered = examData.filter((item) =>
     item.title.toLowerCase().includes(search.toLowerCase())
   );
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
-
   const startIndex = (currentPage - 1) * itemsPerPage;
-
-  const currentData = filtered.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  const currentData = filtered.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="bg-gray-100 min-h-screen py-6">
@@ -98,7 +96,7 @@ const ExamList = () => {
                 key={item.id}
                 className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition bg-white"
               >
-
+                
                 <h3 className="font-medium text-gray-800 mb-3 text-sm sm:text-base">
                   {item.title}
                 </h3>
@@ -114,7 +112,7 @@ const ExamList = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-
+                  
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
                       <Clock size={16} />
@@ -128,24 +126,23 @@ const ExamList = () => {
                   </div>
 
                   <button
-                    onClick={() => navigate(`/exam/${examSetId}/${item.id}`, {
-                      state: { exam: item }
-                    })}
+                    onClick={() =>
+                      navigate(`/exam/${examSetId}/${item.id}`, {
+                        state: { exam: item },
+                      })
+                    }
                     className="cursor-pointer border border-gray-300 px-4 py-2 sm:py-1 rounded text-sm hover:bg-gray-50 w-full sm:w-auto"
                   >
                     Xem
                   </button>
-
+                  
                 </div>
               </div>
             ))}
-
           </div>
 
-          {/* PAGINATION */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-4 mt-6">
-
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
@@ -160,19 +157,15 @@ const ExamList = () => {
 
               <button
                 onClick={() =>
-                  setCurrentPage((prev) =>
-                    Math.min(prev + 1, totalPages)
-                  )
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
                 disabled={currentPage === totalPages}
                 className="w-9 h-9 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 transition"
               >
                 →
               </button>
-
             </div>
           )}
-
         </div>
       </div>
     </div>

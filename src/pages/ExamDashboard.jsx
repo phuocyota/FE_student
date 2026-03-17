@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
   LineChart,
@@ -15,7 +14,6 @@ import { getExamHistory } from "../api/attempt";
 
 const ExamDashboard = () => {
   const navigate = useNavigate();
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
   const [examList, setExamList] = useState([]);
   const [chartData, setChartData] = useState([]);

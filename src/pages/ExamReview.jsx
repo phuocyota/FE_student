@@ -2,13 +2,12 @@ import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { getAttemptReview, startAttempt } from "../api/attempt";
+import { buildAssetUrl } from "../api/client";
 
 const ExamReview = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
   const attemptId = location.state?.attemptId;
 
   const [questions, setQuestions] = useState([]);
@@ -98,7 +97,7 @@ const ExamReview = () => {
         return (
           <img
           key={item.id}
-          src={`${BASE_URL}/${item.content}`}
+          src={buildAssetUrl(item.content)}
           alt=""
           className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
         />

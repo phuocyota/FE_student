@@ -1,76 +1,44 @@
-import axios from "axios";
+import { fetch, parseResponse } from "./client";
+import { API } from "./endpoint";
 
-import { apiRequest } from "./client";
-const baseUrl = import.meta.env.VITE_API_BASE_URL;
-
-// upload avatar
 export const uploadAvatar = async (file) => {
-
-  const token = localStorage.getItem("accessToken");
-
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await axios.post(
-    `${baseUrl}/upload/single`,
-    formData,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data"
-      }
-    }
-  );
-
-  return res.data;
-};
-
-
-// update avatar user
-export const updateUserAvatar = async (userId, userData) => {
-
-  const token = localStorage.getItem("accessToken");
-
-  const res = await axios.put(
-    `${baseUrl}/users/${userId}`,
-    userData,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  );
-
-  return res.data;
-};
-
-// update thông tin profile
-export const updateStudentProfile = async (userId, data) => {
-
-  const token = localStorage.getItem("accessToken");
-
-  const res = await axios.put(
-    `${baseUrl}/users/${userId}`,
-    data,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  );
-
-  return res.data;
-};
-
-// lấy thông tin profile
-export const getUserById = async (userId) => {
-  const token = localStorage.getItem("accessToken");
-
-  const res = await axios.get(`${baseUrl}/users/${userId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
+  const res = await fetch(API.STUDENT.UPLOAD_AVATAR, {
+    method: "POST",
+    body: formData,
   });
 
-  return res.data;
+  return parseResponse(res);
+};
+
+export const updateUserAvatar = async (userId, userData) => {
+  const res = await fetch(API.STUDENT.UPDATE_AVATAR(userId), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+
+  return parseResponse(res);
+};
+
+export const updateStudentProfile = async (userId, data) => {
+  const res = await fetch(API.STUDENT.UPDATE_PROFILE(userId), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  return parseResponse(res);
+};
+
+export const getUserById = async (userId) => {
+  const res = await fetch(API.STUDENT.DETAIL(userId));
+
+  return parseResponse(res);
 };

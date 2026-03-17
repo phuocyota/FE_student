@@ -1,16 +1,14 @@
 import { apiRequest } from "./client";
+import { API } from "./endpoint";
 
-
-// lấy chi tiết môn học và bộ đề thi theo từng khối 
 export const getGrades = () => {
-  return apiRequest("/grade?isGetAllDetail=true", {
+  return apiRequest(API.GRADE.GET_ALL, {
     method: "GET",
   });
 };
 
-// lấy số đề có trogn 1 bộ trang home 
 export const getExamSetDetail = (id) => {
-  return apiRequest(`/exam-set/${id}`, {
+  return apiRequest(API.EXAM_SET.DETAIL(id), {
     method: "GET",
   });
 };

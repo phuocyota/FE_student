@@ -1,9 +1,8 @@
 import { apiRequest } from "./client";
-
-const LOGIN_PATH = "/auth/login/student";
+import { API } from "./endpoint";
 
 export const loginStudent = ({ username, password, deviceId }) =>
-  apiRequest(LOGIN_PATH, {
+  apiRequest(API.AUTH.LOGIN_STUDENT, {
     method: "POST",
     body: JSON.stringify({
       username,

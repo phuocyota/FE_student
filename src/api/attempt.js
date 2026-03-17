@@ -1,71 +1,40 @@
- 
-import { apiRequest } from "./client";
-import axios from "axios";
-
-const baseUrl = import.meta.env.VITE_API_BASE_URL;
+import { API } from "./endpoint";
+import { fetch, parseResponse } from "./client";
 
 export const startAttempt = async (data) => {
+  const res = await fetch(API.ATTEMPT.START, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
 
-  const token = localStorage.getItem("accessToken");
-
-//   console.log("DATA SEND TO API:", data);
-//   console.log("TOKEN:", token);
-
-  const res = await axios.post(
-    `${baseUrl}/attempt/start`,
-    data,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  );
-
-  return res.data;
+  return parseResponse(res);
 };
 
-// nộp bài
 export const submitAttempt = async (attemptId, answers) => {
+  const res = await fetch(API.ATTEMPT.SUBMIT(attemptId), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ answers }),
+  });
 
-  const token = localStorage.getItem("accessToken");
-
-  const res = await axios.post(
-    `${baseUrl}/attempt/${attemptId}/end`,
-    { answers },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  );
-
-  return res.data;
+  return parseResponse(res);
 };
 
-//xem review bài làm
 export const getAttemptReview = async (attemptId) => {
-  const res = await fetch(
-    `${import.meta.env.VITE_API_BASE_URL}/attempt/${attemptId}/review`,
-    {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`
-      }
-    }
-  );
+  const res = await fetch(API.ATTEMPT.REVIEW(attemptId));
 
-  return res.json();
+  return parseResponse(res);
 };
 
-// lấy lịch sử thi
 export const getExamHistory = async (fromDate, toDate) => {
   const res = await fetch(
-    `${import.meta.env.VITE_API_BASE_URL}/attempt/exam-history?fromDate=${fromDate}&toDate=${toDate}`,
-    {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-    }
+    API.ATTEMPT.EXAM_HISTORY(fromDate, toDate)
   );
 
-  return res.json();
+  return parseResponse(res);
 };
