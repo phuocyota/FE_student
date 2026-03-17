@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { getGrades } from "../../api/grade";
+import { getUserById } from "../../api/student";
 
 /* ================== DATA ================== */
 const defaultSubjects = {
@@ -131,12 +132,35 @@ const Header = () => {
   const englishSubjects = englishData?.[selectedEnglishGrade];
 
   // đăng nhập 
-  const [user, setUser] = useState(localStorage.getItem("user"));
+  const [user, setUser] = useState(() => localStorage.getItem("user"));
 
-  useEffect(() => {
-    setUser(localStorage.getItem("user"));
-  }, [location]);
+useEffect(() => {
+  const fetchUser = async () => {
+    const token = localStorage.getItem("accessToken");
+    const id = localStorage.getItem("userId");
 
+    if (!token || !id) return;
+
+    try {
+      const res = await getUserById(id);
+
+      const data = res.data;
+
+      const name = data.fullName || data.userName;
+
+      localStorage.setItem("user", name);
+
+      setUser(name);
+
+    } catch (err) {
+      console.error("Load user lỗi:", err);
+    }
+  };
+
+  if (!localStorage.getItem("user")) {
+    fetchUser();
+  }
+}, []);
   // đăng xuất 
 
   // popup menu bar
@@ -198,6 +222,35 @@ const Header = () => {
       document.removeEventListener("click", handleClickOutsideLanguage);
     };
   }, [showLanguageMega]);
+
+  // lấy thông tin user khi đăng nhập app để hiển thị trong menu
+  useEffect(() => {
+  const loadUser = async () => {
+    const token = localStorage.getItem("accessToken");
+    const id = localStorage.getItem("userId");
+
+    if (!token || !id) return;
+
+    try {
+      const res = await getUserById(id);
+
+      const data = res.data;
+
+      const name = data.fullName || data.userName;
+
+      localStorage.setItem("user", name);
+
+      setUser(name);
+
+    } catch (err) {
+      console.error("Lỗi load user:", err);
+    }
+  };
+
+  if (!localStorage.getItem("user")) {
+    loadUser();
+  }
+}, []);
 
   return (
     <header className="bg-green-700 text-white relative">

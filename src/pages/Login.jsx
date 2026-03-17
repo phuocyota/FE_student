@@ -231,7 +231,9 @@ const Login = () => {
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userType", userType);
-      localStorage.setItem("user", form.id);
+      // localStorage.setItem("user", form.id);
+
+      //setUser(form.id);
 
       toast.success("Đăng nhập thành công!");
 
