@@ -10,7 +10,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { getGrades } from "../../api/grade";
-import { getUserById } from "../../api/student";
 
 /* ================== DATA ================== */
 const defaultSubjects = {
@@ -133,58 +132,13 @@ const Header = () => {
 
   // đăng nhập 
   const [user, setUser] = useState(() => {
-  return localStorage.getItem("username");
+  return localStorage.getItem("user");
 });
 
   useEffect(() => {
-  const username = localStorage.getItem("username");
-  setUser(username);
+  const user = localStorage.getItem("user");
+  setUser(user);
 }, [location.pathname]);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem("accessToken");
-      const id = localStorage.getItem("userId");
-
-      if (!token || !id) return;
-
-      try {
-        const res = await getUserById(id);
-        // ✅ an toàn tuyệt đối
-        const data = res.data;
-
-        if (!data) {
-          console.error("API user trả về rỗng:", res);
-          return;
-        }
-
-        const name = data.fullName || data.userName;
-
-        const userObj = {
-          id: id,
-          username: name
-        };
-
-        localStorage.setItem("user", JSON.stringify(userObj));
-        setUser(userObj);
-
-      } catch (err) {
-        console.error("Load user lỗi:", err);
-      }
-    };
-
-    try {
-      const stored = localStorage.getItem("user");
-      if (!stored || !stored.startsWith("{")) {
-        fetchUser();
-      }
-    } catch {
-      fetchUser();
-    }
-  }, []);
-
-
-  // đăng xuất 
 
   // popup menu bar
   const [showUserMenu, setShowUserMenu] = useState(false);
