@@ -132,40 +132,58 @@ const Header = () => {
   const englishSubjects = englishData?.[selectedEnglishGrade];
 
   // đăng nhập 
-  const [user, setUser] = useState(() => localStorage.getItem("user"));
+  const [user, setUser] = useState(() => {
+  return localStorage.getItem("username");
+});
 
-   useEffect(() => {
-  const storedUser = localStorage.getItem("user");
-  setUser(storedUser);
+  useEffect(() => {
+  const username = localStorage.getItem("username");
+  setUser(username);
 }, [location.pathname]);
 
-useEffect(() => {
-  const fetchUser = async () => {
-    const token = localStorage.getItem("accessToken");
-    const id = localStorage.getItem("userId");
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("accessToken");
+      const id = localStorage.getItem("userId");
 
-    if (!token || !id) return;
+      if (!token || !id) return;
+
+      try {
+        const res = await getUserById(id);
+        // ✅ an toàn tuyệt đối
+        const data = res.data;
+
+        if (!data) {
+          console.error("API user trả về rỗng:", res);
+          return;
+        }
+
+        const name = data.fullName || data.userName;
+
+        const userObj = {
+          id: id,
+          username: name
+        };
+
+        localStorage.setItem("user", JSON.stringify(userObj));
+        setUser(userObj);
+
+      } catch (err) {
+        console.error("Load user lỗi:", err);
+      }
+    };
 
     try {
-      const res = await getUserById(id);
-
-      const data = res.data.data;
-
-      const name = data.fullName || data.userName;
-
-      localStorage.setItem("user", name);
-
-      setUser(name);
-
-    } catch (err) {
-      console.error("Load user lỗi:", err);
+      const stored = localStorage.getItem("user");
+      if (!stored || !stored.startsWith("{")) {
+        fetchUser();
+      }
+    } catch {
+      fetchUser();
     }
-  };
+  }, []);
 
-  if (!localStorage.getItem("user")) {
-    fetchUser();
-  }
-}, []);
+
   // đăng xuất 
 
   // popup menu bar
@@ -228,7 +246,7 @@ useEffect(() => {
     };
   }, [showLanguageMega]);
 
-   
+
 
   return (
     <header className="bg-green-700 text-white relative">
@@ -296,6 +314,7 @@ useEffect(() => {
               {/* Text chỉ hiện từ md trở lên */}
               <span className="hidden md:inline whitespace-nowrap">
                 Xin chào! {user}
+                {/* Xin chào! {user?.username} */}
               </span>
 
               {/* Icon luôn hiển thị */}
@@ -313,6 +332,9 @@ useEffect(() => {
                   {/* Tên + ID */}
                   <div className="mb-3">
                     <div className="font-semibold text-gray-800">{user}</div>
+                    {/* <div className="font-semibold text-gray-800">
+                      {user?.username}
+                    </div> */}
                     <div className="text-sm text-gray-500">
                       ID: {userId}
                     </div>
@@ -543,14 +565,14 @@ whitespace-nowrap
                                       key={exam.id}
                                       // onClick={() => navigate(`/exam-set/${examSet.id}`)}
                                       onClick={() => {
-                                      setShowMega(false);
-                                      setPinned(false);
+                                        setShowMega(false);
+                                        setPinned(false);
 
-                                      // setShowLanguageMega(false);
-                                      // setPinnedLanguage(false);
+                                        // setShowLanguageMega(false);
+                                        // setPinnedLanguage(false);
 
-                                      navigate(`/exam-set/${exam.id}`);
-                                    }}
+                                        navigate(`/exam-set/${exam.id}`);
+                                      }}
                                       className="hover:text-green-600 cursor-pointer"
                                     >
                                       {exam.title}
@@ -632,7 +654,7 @@ whitespace-nowrap
                         <div
                           key={grade}
                           onClick={() =>
-                             setSelectedEnglishGrade(grade)}
+                            setSelectedEnglishGrade(grade)}
                           className={`px-4 py-2 rounded-lg cursor-pointer mb-1 transition
           ${selectedEnglishGrade === grade
                               ? "bg-yellow-500 text-white"
