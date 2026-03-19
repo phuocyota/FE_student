@@ -168,7 +168,7 @@
 
 // export default Login;
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kido.jpg";
 import toast from "react-hot-toast";
@@ -291,15 +291,19 @@ const Login = () => {
       localStorage.setItem("userType", userType);
 
       // 2️⃣ gọi API lấy thông tin user
+      try {
       const res = await getUserById(userId);
 
       const userData = res.data; // đúng theo API bạn gửi trước
 
-      const name = userData.fullName || userData.userName;
+      localStorage.setItem("fullName", userData.fullName || "");
+      localStorage.setItem("user", userData.userName || "");
+
+      } catch (fullNameError) {
+        localStorage.removeItem("fullName");
+      }
 
       // 3️⃣ lưu user
-      localStorage.setItem("user", name);
-
       toast.success("Đăng nhập thành công!");
 
       navigate("/");

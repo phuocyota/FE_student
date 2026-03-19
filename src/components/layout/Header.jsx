@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { getGrades } from "../../api/grade";
+import { getUserById } from "../../api/student";
 
 /* ================== DATA ================== */
 const defaultSubjects = {
@@ -131,19 +132,63 @@ const Header = () => {
   const englishSubjects = englishData?.[selectedEnglishGrade];
 
   // đăng nhập 
-  const [user, setUser] = useState(() => {
-  return localStorage.getItem("user");
-});
-
-  useEffect(() => {
-  const user = localStorage.getItem("user");
-  setUser(user);
-}, [location.pathname]);
+  const [user, setUser] = useState(() => localStorage.getItem("user") || "");
+  const [fullName, setFullName] = useState(
+    () => localStorage.getItem("fullName") || ""
+  );
 
   // popup menu bar
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef();
   const userId = localStorage.getItem("userId");
+  const displayName =
+    localStorage.getItem("fullName") || fullName || user;
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("fullName");
+    localStorage.removeItem("userId");
+    setShowUserMenu(false);
+
+    window.location.href = "/login";
+  };
+
+  useEffect(() => {
+    setUser(localStorage.getItem("user") || "");
+    setFullName(localStorage.getItem("fullName") || "");
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (fullName || !userId) return;
+
+    let isMounted = true;
+
+    const fetchFullName = async () => {
+      try {
+        const res = await getUserById(userId);
+        const userData = res?.data || res;
+        const name = userData?.fullName || userData?.userName || "";
+
+        if (!name) return;
+
+        localStorage.setItem("fullName", name);
+
+        if (isMounted) {
+          setFullName(name);
+        }
+      } catch (err) {
+        console.error("Load fullName lá»—i:", err);
+      }
+    };
+
+    fetchFullName();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fullName, userId]);
 
 
 
@@ -260,14 +305,14 @@ const Header = () => {
 
         {/* LOGIN */}
         <div className=" flex justify-end relative">
-          {user ? (
+          {displayName ? (
             <div
               ref={userMenuRef}
               className="flex items-center gap-3 text-white font-semibold"
             >
               {/* Text chỉ hiện từ md trở lên */}
               <span className="hidden md:inline whitespace-nowrap">
-                Xin chào! {user}
+                Xin chào! {displayName}
                 {/* Xin chào! {user?.username} */}
               </span>
 
@@ -285,7 +330,7 @@ const Header = () => {
 
                   {/* Tên + ID */}
                   <div className="mb-3">
-                    <div className="font-semibold text-gray-800">{user}</div>
+                    <div className="font-semibold text-gray-800">{displayName}</div>
                     {/* <div className="font-semibold text-gray-800">
                       {user?.username}
                     </div> */}
@@ -313,20 +358,7 @@ const Header = () => {
                     </Link>
 
                     <div
-                      onClick={() => {
-                        // Xoá toàn bộ thông tin đăng nhập
-                        localStorage.removeItem("accessToken");
-                        localStorage.removeItem("refreshToken");
-                        localStorage.removeItem("aToken");
-                        localStorage.removeItem("user");
-                        localStorage.removeItem("userId");
-
-                        // Đóng menu
-                        setShowUserMenu(false);
-
-                        // Chuyển về login
-                        window.location.href = "/login";
-                      }}
+                      onClick={handleLogout}
                       className="cursor-pointer text-red-500 hover:text-red-600"
                     >
                       Đăng xuất
