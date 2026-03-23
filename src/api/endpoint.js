@@ -22,5 +22,8 @@ export const API = {
     REVIEW: (attemptId) => `${API_BASE_URL}/attempt/${attemptId}/review`,
     EXAM_HISTORY: (fromDate, toDate) =>
       `${API_BASE_URL}/attempt/exam-history?fromDate=${fromDate}&toDate=${toDate}`,
+
+     LIST: (questionBankId, examSetId, page = 1, size = 1000) =>
+    `${API_BASE_URL}/attempt?questionBankId=${questionBankId}&examSetId=${examSetId}&page=${page}&size=${size}`,
   },
 };

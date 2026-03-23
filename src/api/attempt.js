@@ -38,3 +38,17 @@ export const getExamHistory = async (fromDate, toDate) => {
 
   return parseResponse(res);
 };
+
+
+export const getAttemptList = async ({
+  questionBankId,
+  examSetId,
+  page = 1,
+  size = 1000,
+}) => {
+  const res = await fetch(
+    API.ATTEMPT.LIST(questionBankId, examSetId, page, size)
+  );
+
+  return parseResponse(res);
+};

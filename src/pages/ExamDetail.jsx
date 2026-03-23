@@ -3,41 +3,75 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
 import avatar from "../assets/avatar.png";
 import { useLocation } from "react-router-dom";
-import { startAttempt } from "../api/attempt";
+import { startAttempt, getAttemptList } from "../api/attempt";
 const ExamDetail = () => {
   const { examSetId, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
   const exam =
-  location.state?.exam ||
-  JSON.parse(localStorage.getItem("current_exam"));
+    location.state?.exam ||
+    JSON.parse(localStorage.getItem("current_exam"));
 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const examTitle = exam?.title || "Đề thi";
-  
+
 
   // load lịch sử làm bài
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem(`exam_${id}`)) || [];
-    setHistory(saved);
-    setLoading(false);
-  }, [id]);
+    const fetchHistory = async () => {
+      try {
+        const res = await getAttemptList({
+          questionBankId: id,
+          examSetId: examSetId,
+          page: 1,
+          size: 1000,
+        });
 
-  // redirect nếu không có exam
-  // useEffect(() => {
-  //   if (!loading && !exam) {
-  //     navigate(`/exam-set/${examSetId}`);
-  //   }
-  // }, [loading, exam, examSetId, navigate]);
+        if (res.success) {
+          const mapped = res.data.data
+            .filter(item => item.status === "SUBMITTED")
+            .map(item => ({
+              attemptId: item.id,
+              score: item.score || 0,
+              total: item.questionBank?.totalScore || 100,
+              date: item.submittedAt || item.startedAt,
+              time: calculateTime(item.startedAt, item.submittedAt),
+            }))
+            .sort((a, b) => new Date(b.date) - new Date(a.date)); 
+
+          setHistory(mapped);
+        }
+      } catch (error) {
+        console.error("Fetch history error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [id, examSetId]);
+
+
+
+  const calculateTime = (start, end) => {
+    if (!start || !end) return "--";
+
+    const diff = new Date(end) - new Date(start);
+
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+
+    return `${minutes} phút ${seconds} giây`;
+  };
 
   // bắt đầu thi
   const handleMockTest = async () => {
     try {
       const payload = {
-        questionBankId: id,   // ⚠️ phải dùng id từ params
+        questionBankId: id,    
         examSetId: examSetId
       };
 
@@ -74,10 +108,10 @@ const ExamDetail = () => {
   // tìm lần thi cao nhất
   const highestIndex = history.length
     ? history.reduce(
-        (maxIndex, item, index, arr) =>
-          item.score > arr[maxIndex].score ? index : maxIndex,
-        0
-      )
+      (maxIndex, item, index, arr) =>
+        item.score > arr[maxIndex].score ? index : maxIndex,
+      0
+    )
     : -1;
 
   const highestAttempt = highestIndex !== -1 ? history[highestIndex] : null;
@@ -173,6 +207,8 @@ const ExamDetail = () => {
 
               {(() => {
                 // tìm lần thi điểm cao nhất
+                if (!history.length) return null;
+
                 const highestIndex = history.reduce(
                   (maxIndex, item, index, arr) =>
                     item.score > arr[maxIndex].score ? index : maxIndex,
