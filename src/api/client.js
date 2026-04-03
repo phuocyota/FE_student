@@ -33,6 +33,17 @@ export const buildAssetUrl = (path) => {
   return `${BASE_URL}${normalizedPath}`;
 };
 
+// export const buildAssetUrl = (path) => {
+//   if (!path) return "";
+
+//   // fix thiếu dấu /
+//   if (!path.startsWith("/")) {
+//     path = "/" + path;
+//   }
+
+//   return `${BASE_URL}${path}`;
+// };
+
 export const fetch = async (
   url,
   options = {},

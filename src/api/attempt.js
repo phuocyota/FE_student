@@ -13,18 +13,30 @@ export const startAttempt = async (data) => {
   return parseResponse(res);
 };
 
+// export const submitAttempt = async (attemptId, answers) => {
+//   const res = await fetch(API.ATTEMPT.SUBMIT(attemptId), {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//     body: JSON.stringify({ answers }),
+//   });
+
+//   return parseResponse(res);
+// };
 export const submitAttempt = async (attemptId, answers) => {
   const res = await fetch(API.ATTEMPT.SUBMIT(attemptId), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ answers }),
+
+    // ✅ PHẢI LÀ CÁI NÀY
+    body: JSON.stringify(answers),
   });
 
   return parseResponse(res);
 };
-
 export const getAttemptReview = async (attemptId) => {
   const res = await fetch(API.ATTEMPT.REVIEW(attemptId));
 

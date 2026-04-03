@@ -86,6 +86,7 @@ const ExamDoing = () => {
     try {
 
       const answersSubmit = Object.values(answers);
+      console.log("SUBMIT:", answersSubmit);
 
       const res = await submitAttempt(attemptId, answersSubmit);
 
@@ -94,18 +95,18 @@ const ExamDoing = () => {
         0
       );
 
-      if (res.success) {
+      if (res) {
 
         const timeUsed = totalTime - timeLeft;
         const minutes = Math.floor(timeUsed / 60);
         const seconds = timeUsed % 60;
 
         const result = {
-          date: res.data.submittedAt,
-          score: res.data.score,
+          date: res.submittedAt,
+          score: res.score,
           total: totalPoints,
           time: `${minutes} phút ${seconds} giây`,
-          attemptId: res.data.attemptId
+          attemptId: res.attemptId
         };
 
         const existing =
@@ -140,25 +141,35 @@ const ExamDoing = () => {
 
   const confirmExit = () => navigate(-1);
 
-  // hiển thị hình ảnh 
+  // hiển thị hình ảnh , audio , text
   const renderChainContent = (chain) => {
+    if (!chain || chain.length === 0) return null;
+
     return chain.map((item) => {
+
+      if (item.contentType === "TEXT") {
+        return <p key={item.id}>{item.content}</p>;
+      }
+
       if (item.contentType === "IMAGE") {
         return (
           <img
-          key={item.id}
-          src={buildAssetUrl(item.content)}
-          alt=""
-          className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
-        />
+            key={item.id}
+            src={buildAssetUrl(item.content)}
+            alt=""
+            className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
+          />
         );
       }
 
-      if (item.contentType === "TEXT") {
+
+      if (item.contentType === "AUDIO") {
         return (
-          <p key={item.id} className="my-2">
-            {item.content}
-          </p>
+          <audio
+            key={item.id}
+            controls
+            src={buildAssetUrl(item.content)}
+          />
         );
       }
 
@@ -166,6 +177,21 @@ const ExamDoing = () => {
     });
   };
 
+
+  const getAnswerContent = (answer) => {
+    if (answer.chain && answer.chain.length > 0) {
+      return renderChainContent(answer.chain);
+    }
+
+    // fallback về content
+    return renderChainContent([
+      {
+        id: answer.id,
+        contentType: answer.contentType,
+        content: answer.content,
+      },
+    ]);
+  };
   return (
 
     <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50 overflow-hidden">
@@ -257,7 +283,7 @@ const ExamDoing = () => {
                       </div> */}
                       <div>
                         <strong>{label}. </strong>
-                        {renderChainContent(answer.chain)}
+                        {getAnswerContent(answer)}
                       </div>
 
                     </div>
