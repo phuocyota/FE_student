@@ -26,6 +26,9 @@ const ExamReview = () => {
       try {
 
         const res = await getAttemptReview(attemptId);
+        // ✅ LOG Ở ĐÂY
+    console.log("STATUS:", res.data.status);
+    console.log("FULL DATA:", res.data);
 
         if (res.success) {
           setQuestions(res.data.questions);
@@ -73,50 +76,96 @@ const ExamReview = () => {
 
   };
 
+  const isAnswered = (question) => {
+    return question.answers.some(a => a.isSelected);
+  };
+
+  const isQuestionCorrect = (question) => {
+  return question.answers.some(
+    (a) => a.isCorrect && a.isSelected
+  );
+};
 
   /* ===== THỐNG KÊ ===== */
 
-  const correctCount = questions.filter(q => q.isCorrect).length;
+  const correctCount = questions.filter(q => isQuestionCorrect(q)).length;
 
   const wrongCount = questions.filter(
-    q => !q.isCorrect && q.selectedAnswerIds?.length
+    q => !isQuestionCorrect(q) && isAnswered(q)
   ).length;
 
   const notAnsweredCount = questions.filter(
-    q => !q.selectedAnswerIds?.length
+    q => !isAnswered(q)
   ).length;
 
   // hiển thị hình ảnh trogn câu hỏi 
-  const renderChainContent = (chain) => {
+  // const renderChainContent = (chain) => {
 
-    if (!chain) return null;
+  //   if (!chain) return null;
+
+  //   return chain.map((item) => {
+
+  //     if (item.contentType === "IMAGE") {
+  //       return (
+  //         <img
+  //         key={item.id}
+  //         src={buildAssetUrl(item.content)}
+  //         alt=""
+  //         className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
+  //       />
+  //       );
+  //     }
+
+  //     if (item.contentType === "TEXT") {
+  //       return (
+  //         <p key={item.id} className="my-1">
+  //           {item.content}
+  //         </p>
+  //       );
+  //     }
+
+  //     return null;
+
+  //   });
+
+  // };
+  const renderChainContent = (chain) => {
+    if (!chain || chain.length === 0) return null;
 
     return chain.map((item) => {
+
+      if (item.contentType === "TEXT") {
+        return <p key={item.id}>{item.content}</p>;
+      }
 
       if (item.contentType === "IMAGE") {
         return (
           <img
-          key={item.id}
-          src={buildAssetUrl(item.content)}
-          alt=""
-          className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
-        />
+            key={item.id}
+            src={buildAssetUrl(item.content)}
+            alt=""
+            className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
+          />
         );
       }
 
-      if (item.contentType === "TEXT") {
+
+      if (item.contentType === "AUDIO") {
         return (
-          <p key={item.id} className="my-1">
-            {item.content}
-          </p>
+          <audio
+            key={item.id}
+            controls
+            src={buildAssetUrl(item.content)}
+          />
         );
       }
 
       return null;
-
     });
-
   };
+
+  //log
+ 
 
   return (
 
@@ -228,7 +277,7 @@ const ExamReview = () => {
                     Câu {question.orderNo}
                   </span>
 
-                  {question.isCorrect ? (
+                  {isQuestionCorrect(question) ? (
                     <span className="text-green-600 font-bold">✓</span>
                   ) : (
                     <span className="text-red-600 font-bold">✕</span>
@@ -249,40 +298,49 @@ const ExamReview = () => {
 
                 {question.answers.map((answer, i) => {
 
-                  const label = String.fromCharCode(65 + i);
+  const label = String.fromCharCode(65 + i);
 
-                  return (
-                    <div
-                      key={answer.id}
-                      className={`p-4 mb-3 border border-gray-200 rounded-lg flex justify-between
-                      ${answer.isCorrect
-                          ? "bg-green-50 border-green-500"
-                          : answer.isSelected
-                            ? "bg-red-50 border-red-500"
-                            : ""
-                        }`}
-                    >
+  // ✅ xác định trạng thái rõ ràng
+  const isCorrect = answer.isCorrect;
+  const isSelected = answer.isSelected;
 
-                      {/* <div>
-                        <strong>{label}.</strong> {answer.content}
-                      </div> */}
-                      <div>
-                        <strong>{label}. </strong>
-                        {renderChainContent(answer.chain)}
-                      </div>
+  return (
+    <div
+      key={answer.id}
+      className={`p-4 mb-3 border rounded-lg flex justify-between items-center
+        ${
+          isSelected && isCorrect
+            ? "bg-green-100 border-green-600"   // chọn đúng
+            : isSelected && !isCorrect
+            ? "bg-red-100 border-red-600"       // chọn sai
+            : isCorrect
+            ? "border-green-400"                // đáp án đúng (highlight nhẹ)
+            : "border-gray-200"
+        }
+      `}
+    >
+      <div>
+        <strong>{label}. </strong>
+        {renderChainContent(answer.chain)}
+      </div>
 
-                      {answer.isCorrect && (
-                        <span className="text-green-600 font-bold">✓</span>
-                      )}
+      {/* ICON HIỂN THỊ CHUẨN */}
+      <div className="ml-3">
+        {isSelected && isCorrect && (
+          <span className="text-green-600 font-bold">✓</span>
+        )}
 
-                      {answer.isSelected && !answer.isCorrect && (
-                        <span className="text-red-600 font-bold">✕</span>
-                      )}
+        {isSelected && !isCorrect && (
+          <span className="text-red-600 font-bold">✕</span>
+        )}
 
-                    </div>
-                  );
-
-                })}
+        {!isSelected && isCorrect && (
+          <span className="text-green-500 font-bold">✓</span>
+        )}
+      </div>
+    </div>
+  );
+})}
 
               </div>
 
@@ -333,13 +391,14 @@ const ExamReview = () => {
                       behavior: "smooth"
                     })
                   }
-                  className={`w-8 h-8 text-xs rounded border border-gray-200
-                  ${q.isCorrect
+                  className={`w-8 h-8 text-xs rounded border border-gray-300
+  ${isQuestionCorrect(q)
                       ? "bg-green-600 text-white"
-                      : q.selectedAnswerIds?.length
+                      : isAnswered(q)
                         ? "bg-red-500 text-white"
                         : "bg-gray-100"
-                    }`}
+                    }
+`}
                 >
                   {q.orderNo}
                 </button>

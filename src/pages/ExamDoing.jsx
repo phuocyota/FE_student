@@ -74,7 +74,7 @@ const ExamDoing = () => {
     }));
 
   };
-
+  
   const notAnsweredCount = questions.filter(
     (q) => !answers[q.id]
   ).length;
@@ -85,8 +85,15 @@ const ExamDoing = () => {
 
     try {
 
-      const answersSubmit = Object.values(answers);
-      console.log("SUBMIT:", answersSubmit);
+       const answersSubmit = Object.values(answers);
+
+   
+    // const answersSubmit = questions.map(q => answers[q.id]);
+     
+      console.log("QUESTIONS ORDER:", questions.map(q => q.orderNo));
+      console.log("ANSWERS OBJECT:", answers);
+      console.log("FINAL SUBMIT:", answersSubmit);
+      // console.log("SUBMIT:", answersSubmit);
 
       const res = await submitAttempt(attemptId, answersSubmit);
 
@@ -95,18 +102,19 @@ const ExamDoing = () => {
         0
       );
 
-      if (res) {
+      if (res ) {
 
         const timeUsed = totalTime - timeLeft;
         const minutes = Math.floor(timeUsed / 60);
         const seconds = timeUsed % 60;
-
+``
         const result = {
           date: res.submittedAt,
           score: res.score,
           total: totalPoints,
           time: `${minutes} phút ${seconds} giây`,
-          attemptId: res.attemptId
+          attemptId: res.attemptId,
+          isSelected: true
         };
 
         const existing =
@@ -139,6 +147,7 @@ const ExamDoing = () => {
 
   };
 
+ 
   const confirmExit = () => navigate(-1);
 
   // hiển thị hình ảnh , audio , text
