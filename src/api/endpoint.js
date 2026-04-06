@@ -29,7 +29,7 @@ export const API = {
     EXAM_HISTORY: (fromDate, toDate) =>
       `${API_BASE_URL}/attempt/exam-history?fromDate=${fromDate}&toDate=${toDate}`,
 
-     LIST: (questionBankId, examSetId, page = 1, size = 1000) =>
-    `${API_BASE_URL}/attempt?questionBankId=${questionBankId}&examSetId=${examSetId}&page=${page}&size=${size}`,
+     LIST: (questionBankId, examSetId, page = 1, size = 1000, status = "SUBMITTED") =>
+  `${API_BASE_URL}/attempt?questionBankId=${questionBankId}&examSetId=${examSetId}&status=${status}&page=${page}&size=${size}`,
   },
 };

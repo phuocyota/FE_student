@@ -57,9 +57,10 @@ export const getAttemptList = async ({
   examSetId,
   page = 1,
   size = 1000,
+  status = "SUBMITTED"
 }) => {
   const res = await fetch(
-    API.ATTEMPT.LIST(questionBankId, examSetId, page, size)
+    API.ATTEMPT.LIST(questionBankId, examSetId, page, size, status)
   );
 
   return parseResponse(res);

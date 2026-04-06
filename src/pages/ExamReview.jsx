@@ -81,8 +81,13 @@ const ExamReview = () => {
   };
 
   const isQuestionCorrect = (question) => {
-  return question.answers.some(
-    (a) => a.isCorrect && a.isSelected
+
+  const answered = question.answers.some(a => a.isSelected);
+
+  if (!answered) return false; // ❗ chưa làm = không đúng
+
+  return question.answers.every(
+    (a) => a.isCorrect === a.isSelected
   );
 };
 

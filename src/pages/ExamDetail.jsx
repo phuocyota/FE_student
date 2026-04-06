@@ -28,11 +28,11 @@ const ExamDetail = () => {
           examSetId: examSetId,
           page: 1,
           size: 1000,
+          status: "SUBMITTED",
         });
 
         if (res.success) {
           const mapped = res.data.data
-            .filter(item => item.status === "SUBMITTED")
             .map(item => ({
               attemptId: item.id,
               score: item.score || 0,
@@ -40,7 +40,7 @@ const ExamDetail = () => {
               date: item.submittedAt || item.startedAt,
               time: calculateTime(item.startedAt, item.submittedAt),
             }))
-            .sort((a, b) => new Date(b.date) - new Date(a.date)); 
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
 
           setHistory(mapped);
         }
@@ -71,7 +71,7 @@ const ExamDetail = () => {
   const handleMockTest = async () => {
     try {
       const payload = {
-        questionBankId: id,    
+        questionBankId: id,
         examSetId: examSetId
       };
 
@@ -203,7 +203,7 @@ const ExamDetail = () => {
           {history.length > 0 && (
             <div className="mt-12">
               <h2 className="font-semibold mb-4">
-                Đã thi {history.length} lần
+                Đã thi {history.length} lần (đã nộp bài)
               </h2>
 
               {(() => {
