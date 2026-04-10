@@ -6,9 +6,15 @@ export const API = {
   },
   GRADE: {
     GET_ALL: `${API_BASE_URL}/grade?isGetAllDetail=true`,
+
   },
   EXAM_SET: {
     DETAIL: (id) => `${API_BASE_URL}/exam-set/${id}`,
+    GET_BY_SUBJECT: (subjectId) =>
+    `${API_BASE_URL}/exam-set?subjectId=${subjectId}`,
+
+  
+
   },
   STUDENT: {
     UPLOAD_AVATAR: `${API_BASE_URL}/upload/single`,

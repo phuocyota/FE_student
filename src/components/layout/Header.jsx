@@ -482,7 +482,12 @@ whitespace-nowrap
                                       // setShowLanguageMega(false);
                                       // setPinnedLanguage(false);
 
-                                      navigate(`/exam-set/${exam.id}`);
+                                      // navigate(`/exam-set/${exam.id}`);
+                                      
+                                      navigate(`/exam-set/${exam.id}`, {
+  state: { examSetId: exam.id }
+});
+                                       
                                     }}
                                     className="hover:text-green-600 cursor-pointer"
                                   >

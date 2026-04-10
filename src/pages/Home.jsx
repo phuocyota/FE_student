@@ -26,9 +26,8 @@ const SubjectImage = ({ image, alt }) => {
         decoding="async"
         onLoad={() => setIsLoaded(true)}
         onError={() => setIsLoaded(true)}
-        className={`w-38 h-20 object-cover rounded-lg transition-opacity duration-200 ${
-          isLoaded ? "opacity-100" : "opacity-0"
-        }`}
+        className={`w-38 h-20 object-cover rounded-lg transition-opacity duration-200 ${isLoaded ? "opacity-100" : "opacity-0"
+          }`}
       />
     </div>
   );
@@ -45,6 +44,7 @@ const Home = () => {
       try {
         const res = await getGrades();
 
+        // const list = res?.data?.data || [];
         const list = res?.data?.data || [];
 
         console.log("Grades:", list);
@@ -94,21 +94,30 @@ const Home = () => {
                 <div
                   key={subject.id}
                   onClick={() => {
-                    const examSetId = subject.examSets?.[0]?.id;
+                    if (!subject.id) {
+                      toast.error("Không tìm thấy môn học");
+                      return;
+                    }
 
-                    if (!examSetId) {
+                    if (!subject.examSets || subject.examSets.length === 0) {
                       toast.error("Môn này chưa có bộ đề");
                       return;
                     }
 
-                    navigate(`/exam-set/${examSetId}`);
+                    navigate(`/exam-set-all/${subject.id}`);
                   }}
                   className="flex gap-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition cursor-pointer bg-white"
                 >
 
                   {/* IMAGE */}
-                  <SubjectImage
+                  {/* <SubjectImage
                     image={subject.examSets?.[0]?.image}
+                    alt={subject.name}
+                  /> */}
+                  <SubjectImage
+                    image={
+                      subject.examSets?.[0]?.image || subject.image
+                    }
                     alt={subject.name}
                   />
 
@@ -119,7 +128,7 @@ const Home = () => {
                     </h3>
 
                     <span className="text-xs bg-gray-200 px-3 py-1 rounded-full w-fit">
-                      {subject.total} đề
+                      {subject.total} bộ đề
                     </span>
                   </div>
 
