@@ -160,8 +160,7 @@ const ExamDetail = () => {
         <div className="bg-white p-6 rounded-xl">
 
           <button
-            // onClick={() => navigate(`/exam-set/${examSetId}`)}
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(`/exam-set/${examSetId}`)}
             className="text-blue-600 text-sm mb-4 cursor-pointer "
           >
             ← Quay lại
