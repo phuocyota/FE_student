@@ -4,6 +4,8 @@ import { Clock } from "lucide-react";
 import avatar from "../assets/avatar.png";
 import { useLocation } from "react-router-dom";
 import { startAttempt, getAttemptList } from "../api/attempt";
+import { API } from "../api/endpoint";
+import { fetch, parseResponse } from "../api/client";
 const ExamDetail = () => {
   const { examSetId, id } = useParams();
   const navigate = useNavigate();
@@ -17,6 +19,7 @@ const ExamDetail = () => {
   const [loading, setLoading] = useState(true);
 
   const examTitle = exam?.title || "Đề thi";
+  const [questionBanks, setQuestionBanks] = useState([]);
 
 
   // load lịch sử làm bài
@@ -54,7 +57,26 @@ const ExamDetail = () => {
     fetchHistory();
   }, [id, examSetId]);
 
+  //gọi api lấy thông tin chi tiết đề thi (để lấy danh sách question bank)
+useEffect(() => {
+  const fetchExamDetail = async () => {
+    try {
+      const res = await fetch(API.EXAM_SET.DETAIL(examSetId));
+      const data = await parseResponse(res);
 
+      const qBanks = data?.data?.questionBanks || [];
+
+      setQuestionBanks(qBanks);
+
+    } catch (err) {
+      console.error("Fetch exam detail error:", err);
+    }
+  };
+
+  if (examSetId) {
+    fetchExamDetail();
+  }
+}, [examSetId]);
 
   const calculateTime = (start, end) => {
     if (!start || !end) return "--";
@@ -68,31 +90,61 @@ const ExamDetail = () => {
   };
 
   // bắt đầu thi
+  // const handleMockTest = async () => {
+  //   try {
+  //     const payload = {
+  //       questionBankId: id,
+  //       examSetId: examSetId
+  //     };
+
+  //     const res = await startAttempt(payload);
+
+  //     if (res.success) {
+  //       const attemptId = res.data.attemptId;
+  //       const questions = res.data.questions;
+
+  //       navigate(`/exam-doing/${id}`, {
+  //         state: {
+  //           attemptId,
+  //           questions
+  //         }
+  //       });
+  //     }
+
+  //   } catch (error) {
+  //     console.error("Start attempt error:", error);
+  //   }
+  // };
+
   const handleMockTest = async () => {
-    try {
-      const payload = {
-        questionBankId: id,
-        examSetId: examSetId
-      };
-
-      const res = await startAttempt(payload);
-
-      if (res.success) {
-        const attemptId = res.data.attemptId;
-        const questions = res.data.questions;
-
-        navigate(`/exam-doing/${id}`, {
-          state: {
-            attemptId,
-            questions
-          }
-        });
-      }
-
-    } catch (error) {
-      console.error("Start attempt error:", error);
+  try {
+    if (!questionBanks.length) {
+      alert("Chưa có ngân hàng câu hỏi");
+      return;
     }
-  };
+
+    const questionBankId = questionBanks[0].id; // 👈 lấy cái đầu
+
+    const payload = {
+      questionBankId,
+      examSetId
+    };
+
+    const res = await startAttempt(payload);
+
+    if (res.success) {
+      navigate(`/exam-doing/${questionBankId}`, {
+        state: {
+          attemptId: res.data.attemptId,
+          questions: res.data.questions
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error("Start attempt error:", error);
+  }
+};
 
   // format ngày
   const formatDateVN = (dateString) => {

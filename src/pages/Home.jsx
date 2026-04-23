@@ -99,12 +99,12 @@ const Home = () => {
                       return;
                     }
 
-                    if (!subject.examSets || subject.examSets.length === 0) {
-                      toast.error("Môn này chưa có bộ đề");
-                      return;
-                    }
-
-                    navigate(`/exam-set-all/${subject.id}`);
+                    navigate(`/exam-set-all/${subject.id}`, {
+                      state: {
+                        subject: subject,
+                        grade: gradeItem.grade
+                      }
+                    });
                   }}
                   className="flex gap-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition cursor-pointer bg-white"
                 >

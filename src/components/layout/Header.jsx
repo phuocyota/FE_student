@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { getGrades } from "../../api/grade";
 import { getUserById } from "../../api/student";
+import { fetch, parseResponse } from "../../api/client";
+import { API } from "../../api/endpoint";
 
 /* ================== DATA ================== */
 const defaultSubjects = {
@@ -475,19 +477,58 @@ whitespace-nowrap
                                 subject.examSets.map((exam) => (
                                   <li
                                     key={exam.id}
-                                    onClick={() => {
-                                      setShowMega(false);
-                                      setPinned(false);
+                                    // onClick={() => {
+                                    //   setShowMega(false);
+                                    //   setPinned(false);
 
-                                      // setShowLanguageMega(false);
-                                      // setPinnedLanguage(false);
+                                    //   navigate(`/exam-set-all/${subject.id}`, {
+                                    //     state: {
+                                    //       subject: subject
+                                    //     }
+                                    //   });
 
-                                      // navigate(`/exam-set/${exam.id}`);
-                                      
-                                      navigate(`/exam-set/${exam.id}`, {
-  state: { examSetId: exam.id }
-});
-                                       
+                                    // }}
+                                    onClick={async () => {
+                                      try {
+                                        setShowMega(false);
+                                        setPinned(false);
+
+                                        // 👉 gọi API lấy detail
+                                        const res = await fetch(API.EXAM_SET.DETAIL(exam.id));
+                                        const data = await parseResponse(res);
+
+                                        const questionBanks = data?.data?.questionBanks || [];
+
+                                        if (!questionBanks.length) {
+                                          alert("Bộ đề chưa có câu hỏi");
+                                          return;
+                                        }
+
+                                        const firstQuestionBank = questionBanks[0];
+
+                                        // 👉 build exam giống ExamList
+                                        const examItem = {
+                                          id: firstQuestionBank.id,
+                                          title: firstQuestionBank.title,
+                                          time: firstQuestionBank.durationSeconds
+                                            ? `${firstQuestionBank.durationSeconds / 60} phút`
+                                            : "Không rõ",
+                                          difficulty: firstQuestionBank.totalPoints || 0,
+                                          type: data?.data?.name,
+                                          examSetId: exam.id,
+                                        };
+
+                                        // 👉 lưu localStorage (giống flow bạn đang dùng)
+                                        localStorage.setItem("current_exam", JSON.stringify(examItem));
+
+                                        // 👉 navigate đúng route DETAIL
+                                        navigate(`/exam/${exam.id}/${firstQuestionBank.id}`, {
+                                          state: { exam: examItem },
+                                        });
+
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
                                     }}
                                     className="hover:text-green-600 cursor-pointer"
                                   >
@@ -555,14 +596,56 @@ whitespace-nowrap
                                     <li
                                       key={exam.id}
                                       // onClick={() => navigate(`/exam-set/${examSet.id}`)}
-                                      onClick={() => {
-                                        setShowMega(false);
-                                        setPinned(false);
+                                      // onClick={() => {
+                                      //   setShowMega(false);
+                                      //   setPinned(false);
 
-                                        // setShowLanguageMega(false);
-                                        // setPinnedLanguage(false);
+                                      //   // setShowLanguageMega(false);
+                                      //   // setPinnedLanguage(false);
 
-                                        navigate(`/exam-set/${exam.id}`);
+                                      //   navigate(`/exam-set/${exam.id}`);
+                                      // }}
+                                      onClick={async () => {
+                                        try {
+                                          setShowMega(false);
+                                          setPinned(false);
+
+                                          // 👉 gọi API lấy detail
+                                          const res = await fetch(API.EXAM_SET.DETAIL(exam.id));
+                                          const data = await parseResponse(res);
+
+                                          const questionBanks = data?.data?.questionBanks || [];
+
+                                          if (!questionBanks.length) {
+                                            alert("Bộ đề chưa có câu hỏi");
+                                            return;
+                                          }
+
+                                          const firstQuestionBank = questionBanks[0];
+
+                                          // 👉 build exam giống ExamList
+                                          const examItem = {
+                                            id: firstQuestionBank.id,
+                                            title: firstQuestionBank.title,
+                                            time: firstQuestionBank.durationSeconds
+                                              ? `${firstQuestionBank.durationSeconds / 60} phút`
+                                              : "Không rõ",
+                                            difficulty: firstQuestionBank.totalPoints || 0,
+                                            type: data?.data?.name,
+                                            examSetId: exam.id,
+                                          };
+
+                                          // 👉 lưu localStorage (giống flow bạn đang dùng)
+                                          localStorage.setItem("current_exam", JSON.stringify(examItem));
+
+                                          // 👉 navigate đúng route DETAIL
+                                          navigate(`/exam/${exam.id}/${firstQuestionBank.id}`, {
+                                            state: { exam: examItem },
+                                          });
+
+                                        } catch (err) {
+                                          console.error(err);
+                                        }
                                       }}
                                       className="hover:text-green-600 cursor-pointer"
                                     >
