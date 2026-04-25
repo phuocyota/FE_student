@@ -44,6 +44,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
 
         <Route path="/exam-set/:examSetId" element={<ExamList />} />
+        <Route path="/exam-set-detail/:examSetId" element={<ExamDetail />} />
         <Route path="/exam-set-all/:subjectId" element={<ExamList />} />
 
         <Route

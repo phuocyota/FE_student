@@ -31,8 +31,11 @@ const ExamList = () => {
     localStorage.setItem("current_exam", JSON.stringify(item));
 
     // navigate sang detail
-    navigate(`/exam/${item.examSetId}/${item.id}`, {
-      state: { exam: item },
+    navigate(`/exam-set-detail/${item.id}`, {
+      state: {
+        examSetId: item.id,
+        examSetName: item.title
+      }
     });
   };
 
@@ -161,7 +164,7 @@ const ExamList = () => {
               </button>
 
               <h2 className="text-lg font-semibold">
-                Tất cả đề thi
+                Tất cả bộ đề thi
               </h2>
             </div>
 
