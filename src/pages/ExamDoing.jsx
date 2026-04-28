@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
 import mockExamData from "../datas/mockExamData";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { submitAttempt } from "../api/attempt";
 import { buildAssetUrl } from "../api/client";
+import bellSound from "../assets/bell.mp3";
 
 const ExamDoing = () => {
 
@@ -59,7 +60,8 @@ const ExamDoing = () => {
     .toString()
     .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
-  const timeProgress = (timeLeft / totalTime) * 100;
+
+const timeProgress = ((totalTime - timeLeft) / totalTime) * 100;
 
   /* ================= ANSWER ================= */
 
@@ -201,6 +203,41 @@ const ExamDoing = () => {
       },
     ]);
   };
+
+
+  // thêm hiệu ứng khi hết giờ
+ 
+
+const warned1 = useRef(false);
+const warned2 = useRef(false);
+const isFirstRender = useRef(true);
+
+const audioRef = useRef(null);
+
+useEffect(() => {
+  if (!audioRef.current) {
+    audioRef.current = new Audio(bellSound);
+  }
+
+  // ⛔ chặn lần đầu
+  if (isFirstRender.current) {
+    isFirstRender.current = false;
+    return;
+  }
+
+  if (timeProgress >= 33 && !warned1.current) {
+    warned1.current = true;
+   toast("⚠️ Bạn đã hết 1/3 thời gian làm bài!");
+    audioRef.current.play();
+  }
+
+  if (timeProgress >= 66 && !warned2.current) {
+    warned2.current = true;
+    toast.error("⏰ Còn ít thời gian! Hãy kiểm tra lại bài làm của bạn!");
+    audioRef.current.play();
+  }
+
+}, [timeProgress]);
   return (
 
     <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50 overflow-hidden">

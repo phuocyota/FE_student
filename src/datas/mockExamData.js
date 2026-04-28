@@ -1,7 +1,7 @@
 const mockExamData = {
   id: 1,
   title: "Đề kiểm tra 15 phút - Đề số 02",
-  duration: 35, // phút
+  duration: 3, // phút
   questions: Array.from({ length: 10 }, (_, i) => ({
   id: i + 1,
   type: "multiple-choice",
