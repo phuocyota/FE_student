@@ -144,7 +144,7 @@ const ExamDetail = () => {
           const mapped = res.data.data.map(item => ({
             attemptId: item.id,
             score: item.score || 0,
-            total: item.questionBank?.totalScore || item.totalScore || 100,
+            total: item.fullScore || 10,
             date: item.submittedAt || item.startedAt,
             time: calculateTime(item.startedAt, item.submittedAt),
           }));
