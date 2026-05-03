@@ -1,6 +1,6 @@
  
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kido.jpg";
 import toast from "react-hot-toast";
@@ -144,19 +144,17 @@ const Login = () => {
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userType", userType);
-      localStorage.setItem("user", JSON.stringify(mappedUser));
 
       // 2️⃣ gọi API lấy thông tin user
       try {
-      const res = await getUserById(userId);
+        const res = await getUserById(userId);
+        const userData = res.data;
 
-      const userData = res.data; // đúng theo API bạn gửi trước
-
-      localStorage.setItem("fullName", userData.fullName || "");
-      localStorage.setItem("user", userData.userName || "");
-
+        localStorage.setItem("fullName", userData.fullName || "");
+        localStorage.setItem("user", userData.userName || form.id);
       } catch (fullNameError) {
-        localStorage.removeItem("fullName");
+        console.error("Lỗi fetch user:", fullNameError);
+        localStorage.setItem("user", form.id);
       }
 
       // 3️⃣ lưu user
