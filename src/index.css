@@ -7,3 +7,54 @@
   font-family: "Outfit", sans-serif;
 }
 
+
+@media print {
+
+  /* 🔥 QUAN TRỌNG: ép đúng khổ + xoá margin */
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* 🔥 ẨN toàn bộ ngoài chứng chỉ */
+  body * {
+    visibility: hidden;
+  }
+
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+
+  /* 🔥 CHỈ HIỂN THỊ 1 KHỐI DUY NHẤT */
+  #print-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 🔥 SCALE CHUẨN để KHÔNG bị tràn */
+  #print-area > * {
+    width: 1000px;
+    height: 700px;
+
+    transform: scale(0.95); /* 👈 chỉnh 0.9 - 1 nếu cần */
+    transform-origin: center;
+  }
+}

@@ -42,3 +42,10 @@ export const getUserById = async (userId) => {
 
   return parseResponse(res);
 };
+
+
+// giấy chứng nhận 
+export const getCurrentUser = async () => {
+  const res = await fetch(API.STUDENT.ME);
+  return parseResponse(res);
+};

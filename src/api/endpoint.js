@@ -21,6 +21,7 @@ export const API = {
     DETAIL: (id) => `${API_BASE_URL}/users/${id}`,
     UPDATE_AVATAR: (id) => `${API_BASE_URL}/users/${id}`,
     UPDATE_PROFILE: (id) => `${API_BASE_URL}/users/${id}`,
+    ME: `${API_BASE_URL}/users/me`,
   },
   ATTEMPT: {
     START: `${API_BASE_URL}/attempt/start`,
@@ -31,5 +32,7 @@ export const API = {
 
      LIST: (questionBankId, examSetId, page = 1, size = 1000, status = "SUBMITTED") =>
   `${API_BASE_URL}/attempt?questionBankId=${questionBankId}&examSetId=${examSetId}&status=${status}&page=${page}&size=${size}`,
+     MY_STATISTICS: `${API_BASE_URL}/attempt/my-statistics`,
   },
+  
 };

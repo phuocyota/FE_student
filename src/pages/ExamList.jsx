@@ -30,85 +30,20 @@ const ExamList = () => {
     // lưu vào localStorage
     localStorage.setItem("current_exam", JSON.stringify(item));
 
+      
+  localStorage.setItem("current_subject", JSON.stringify(subject));
+
     // navigate sang detail
     navigate(`/exam-set-detail/${item.id}`, {
       state: {
         examSetId: item.id,
-        examSetName: item.title
+        examSetName: item.title,
+        subject: subject,
       }
     });
   };
 
-  //  useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       let dataList = [];
-
-  //       // ✅ CASE 1: từ Header (1 bộ đề)
-  //       if (examSetId) {
-  //         const res = await fetch(API.EXAM_SET.DETAIL(examSetId));
-  //         const data = await parseResponse(res);
-
-  //         const questionBanks = data?.data?.questionBanks || [];
-
-  //         dataList = questionBanks.map((q) => ({
-  //           id: q.id,
-  //           title: q.title,
-  //           time: q.durationSeconds
-  //             ? `${q.durationSeconds / 60} phút`
-  //             : "Không rõ",
-  //           difficulty: q.totalPoints || 0,
-  //           type: data?.data?.name,
-  //           examSetId: examSetId,
-  //         }));
-  //       }
-
-  //       // ✅ CASE 2: từ HOME (nhiều bộ đề)
-  //       else if (subjectId) {
-  //         const res = await fetch(API.EXAM_SET.GET_BY_SUBJECT(subjectId));
-  //         const payload = await parseResponse(res);
-
-  //         const examSets = payload?.data?.data || [];
-
-  //         const results = await Promise.all(
-  //           examSets.map(async (examSet) => {
-  //             const resDetail = await fetch(
-  //               API.EXAM_SET.DETAIL(examSet.id)
-  //             );
-  //             const dataDetail = await parseResponse(resDetail);
-
-  //             return {
-  //               examSetId: dataDetail?.data?.id,
-  //               examSetName: dataDetail?.data?.name,
-  //               questionBanks: dataDetail?.data?.questionBanks || [],
-  //             };
-  //           })
-  //         );
-
-  //         dataList = results.flatMap((item) =>
-  //           item.questionBanks.map((q) => ({
-  //             id: q.id,
-  //             title: q.title,
-  //             time: q.durationSeconds
-  //               ? `${q.durationSeconds / 60} phút`
-  //               : "Không rõ",
-  //             difficulty: q.totalPoints || 0,
-  //             type: item.examSetName,
-  //             examSetId: item.examSetId,
-  //           }))
-  //         );
-  //       }
-
-  //       setExamData(dataList);
-  //     } catch (err) {
-  //       console.error(err);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, [examSetId, subjectId]);
+   
   // ================= SEARCH =================
 
   useEffect(() => {

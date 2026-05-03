@@ -65,3 +65,10 @@ export const getAttemptList = async ({
 
   return parseResponse(res);
 };
+
+
+export const getMyStatistics = async () => {
+  const res = await fetch(API.ATTEMPT.MY_STATISTICS);
+
+  return parseResponse(res);
+};

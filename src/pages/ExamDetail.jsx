@@ -1,4 +1,4 @@
- 
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Clock } from "lucide-react";
@@ -6,11 +6,14 @@ import avatar from "../assets/avatar.png";
 import { startAttempt, getAttemptList } from "../api/attempt";
 import { API } from "../api/endpoint";
 import { fetch, parseResponse } from "../api/client";
-
+import { getCurrentUser } from "../api/student";
 const ExamDetail = () => {
   const { examSetId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  // console.log("🔥 SUBJECT:", location.state);
+  const subjectName = location.state?.subject?.name;
+  // console.log("🔥 SUBJECT NAME:", location.state?.subject?.name);
 
   const [exam, setExam] = useState(null);
 
@@ -60,7 +63,32 @@ const ExamDetail = () => {
     fetchExamDetail();
   }, [examSetId]);
   // ================= START EXAM =================
+  // const handleStartExam = async (qb) => {
+  //   try {
+  //     const res = await startAttempt({
+  //       questionBankId: qb.id,
+  //       examSetId,
+  //     });
+
+  //     if (res.success) {
+  //       navigate(`/exam-doing/${qb.id}`, {
+  //         state: {
+  //           attemptId: res.data.attemptId,
+  //           questions: res.data.questions,
+  //         },
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // };
+  const [isStarting, setIsStarting] = useState(false);
+
   const handleStartExam = async (qb) => {
+    if (isStarting) return; // ❌ chặn bấm nhiều lần
+
+    setIsStarting(true);
+
     try {
       const res = await startAttempt({
         questionBankId: qb.id,
@@ -77,6 +105,7 @@ const ExamDetail = () => {
       }
     } catch (error) {
       console.error(error);
+      setIsStarting(false); // nếu lỗi thì mở lại
     }
   };
 
@@ -106,8 +135,8 @@ const ExamDetail = () => {
         if (res.success) {
           const mapped = res.data.data.map(item => ({
             attemptId: item.id,
-            score: item.score || 0,
-            total: item.questionBank?.totalScore || 100,
+            score: item.score,
+            total: item.questionBank?.totalScore,
             date: item.submittedAt || item.startedAt,
             time: calculateTime(item.startedAt, item.submittedAt),
           }));
@@ -118,7 +147,7 @@ const ExamDetail = () => {
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false); // ✅ BẮT BUỘC PHẢI CÓ
+        setLoading(false);
       }
     };
 
@@ -133,20 +162,79 @@ const ExamDetail = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [score, setScore] = useState(0);
   const [lastExam, setLastExam] = useState(null);
+// xem chứng chỉ 
+  const getCertificateLevel = (score) => {
+    if (score >= 8) return "Xuất sắc";
+    if (score >= 5) return "Hoàn thành";
+    return "Chưa hoàn thành";
+  };
+
   useEffect(() => {
+  const handlePopup = async () => {
     const result = localStorage.getItem("exam_result_popup");
+    if (!result) return;
 
-    if (result) {
-      const data = JSON.parse(result);
+    const data = JSON.parse(result);
 
-      setScore(data.score);
-      setLastExam(data); // 👈 Lưu lại full info
-      setShowPopup(true);
+    // console.log("🔥 RESULT DATA:", data);
+    console.log("🔥 LAST EXAM:", lastExam);
 
-      localStorage.removeItem("exam_result_popup");
+    setScore(data.score);
+    setLastExam(data);
+
+    
+    setShowPopup(true);
+
+    try {
+      // 🔥 lấy user
+      let user = JSON.parse(localStorage.getItem("user") || "null");
+
+      if (!user) {
+        const res = await getCurrentUser();
+        const u = res.data;
+
+        user = {
+          fullName: u.fullName,
+          className: u.className,
+          school: u.schoolName,
+        };
+
+        localStorage.setItem("user", JSON.stringify(user));
+      }
+
+      // 🔥 LẤY SUBJECT THẬT
+      const subjectName =
+  location.state?.subject?.name ||
+  JSON.parse(localStorage.getItem("current_subject"))?.name ||
+  "Unknown";
+      // 🔥 tạo certificate
+      const newCert = {
+        id: Date.now(),
+        subject: subjectName,
+        name: user.fullName,
+        className: user.className,
+        school: user.school,
+        level: getCertificateLevel(data.score),
+        date: new Date().toISOString(),
+      };
+
+      // 🔥 LƯU LIST (KHÔNG GHI ĐÈ)
+      const oldList = JSON.parse(localStorage.getItem("certificates") || "[]");
+
+      localStorage.setItem(
+        "certificates",
+        JSON.stringify([newCert, ...oldList])
+      );
+
+    } catch (err) {
+      console.error("Create certificate error:", err);
     }
-  }, []);
 
+    localStorage.removeItem("exam_result_popup");
+  };
+
+  handlePopup();
+}, []);
   // ================= FORMAT DATE =================
   const formatDateVN = (date) =>
     new Date(date).toLocaleDateString("vi-VN");
@@ -154,6 +242,8 @@ const ExamDetail = () => {
   if (loading) {
     return <div className="text-center py-20">Đang tải...</div>;
   }
+
+  
 
   return (
     <div className="bg-gray-100 min-h-screen py-6">
@@ -191,9 +281,10 @@ const ExamDetail = () => {
 
                 <button
                   onClick={() => handleStartExam(qb)}
+                  disabled={isStarting}
                   className="bg-green-600 text-white px-4 py-2 rounded cursor-pointer hover:bg-green-700 transition"
                 >
-                  Làm bài
+                  {isStarting ? "Đang vào bài..." : "Làm bài"}
                 </button>
               </div>
             ))}
@@ -242,78 +333,78 @@ const ExamDetail = () => {
 
                       <tbody className="text-sm">
 
-  {/* 🏆 CAO NHẤT */}
-  <tr className="bg-yellow-50 font-semibold border-b border-gray-300">
-    <td className="py-4 px-6">🏆 Cao nhất</td>
+                        {/* 🏆 CAO NHẤT */}
+                        <tr className="bg-yellow-50 font-semibold border-b border-gray-300">
+                          <td className="py-4 px-6">🏆 Cao nhất</td>
 
-    <td className="py-4 px-6">
-      {formatDateVN(highestAttempt.date)}
-    </td>
+                          <td className="py-4 px-6">
+                            {formatDateVN(highestAttempt.date)}
+                          </td>
 
-    <td className="py-4 px-6 text-red-600 font-bold text-base">
-      {highestAttempt.score}/{highestAttempt.total}
-    </td>
+                          <td className="py-4 px-6 text-red-600 font-bold text-base">
+                            {highestAttempt.score}/{highestAttempt.total}
+                          </td>
 
-    <td className="py-4 px-6">
-      {highestAttempt.time}
-    </td>
+                          <td className="py-4 px-6">
+                            {highestAttempt.time}
+                          </td>
 
-    <td className="py-4 px-6">
-      <button
-        onClick={() =>
-          navigate(`/exam-review/${exam?.id}`, {
-            state: {
-              attemptId: highestAttempt.attemptId
-            }
-          })
-        }
-        className="px-4 py-2 text-green-700 border rounded-full hover:bg-green-600 hover:text-white transition"
-      >
-        XEM
-      </button>
-    </td>
-  </tr>
+                          <td className="py-4 px-6">
+                            <button
+                              onClick={() =>
+                                navigate(`/exam-review/${exam?.id}`, {
+                                  state: {
+                                    attemptId: highestAttempt.attemptId
+                                  }
+                                })
+                              }
+                              className="px-4 py-2 text-green-700 border rounded-full hover:bg-green-600 hover:text-white transition"
+                            >
+                              XEM
+                            </button>
+                          </td>
+                        </tr>
 
-  {/* CÁC LẦN KHÁC */}
-  {currentHistory.map((item, index) => (
-    <tr
-      key={index}
-      className="border-b border-gray-300 hover:bg-gray-50 transition"
-    >
-      <td className="py-4 px-6 font-medium">
-        Lần {startIndex + index + 1}
-      </td>
+                        {/* CÁC LẦN KHÁC */}
+                        {currentHistory.map((item, index) => (
+                          <tr
+                            key={index}
+                            className="border-b border-gray-300 hover:bg-gray-50 transition"
+                          >
+                            <td className="py-4 px-6 font-medium">
+                              Lần {startIndex + index + 1}
+                            </td>
 
-      <td className="py-4 px-6">
-        {formatDateVN(item.date)}
-      </td>
+                            <td className="py-4 px-6">
+                              {formatDateVN(item.date)}
+                            </td>
 
-      <td className="py-4 px-6 text-red-600 font-semibold text-base">
-        {item.score}/{item.total}
-      </td>
+                            <td className="py-4 px-6 text-red-600 font-semibold text-base">
+                              {item.score}/{item.total}
+                            </td>
 
-      <td className="py-4 px-6 text-gray-600">
-        {item.time}
-      </td>
+                            <td className="py-4 px-6 text-gray-600">
+                              {item.time}
+                            </td>
 
-      <td className="py-4 px-6">
-        <button
-          onClick={() =>
-            navigate(`/exam-review/${exam?.id}`, {
-              state: {
-                attemptId: item.attemptId
-              }
-            })
-          }
-          className="px-4 py-2 text-green-700 border rounded-full hover:bg-green-600 hover:text-white transition"
-        >
-          XEM
-        </button>
-      </td>
-    </tr>
-  ))}
+                            <td className="py-4 px-6">
+                              <button
+                                onClick={() =>
+                                  navigate(`/exam-review/${exam?.id}`, {
+                                    state: {
+                                      attemptId: item.attemptId
+                                    }
+                                  })
+                                }
+                                className="px-4 py-2 text-green-700 border rounded-full hover:bg-green-600 hover:text-white transition"
+                              >
+                                XEM
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
 
-</tbody>
+                      </tbody>
                     </table>
                     {/* phân trang */}
                     <div className="flex justify-center items-center gap-4 mt-6">
@@ -396,28 +487,60 @@ const ExamDetail = () => {
         </div>
       </div>
 
+
       {/* ================= POPUP ================= */}
       {showPopup && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl text-center shadow-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
 
-            <h2 className="text-green-600 font-bold text-lg mb-3">
+          <div className="bg-white p-8 rounded-2xl text-center shadow-xl w-[350px]">
+
+            {/* TITLE */}
+            <h2 className="text-green-600 font-bold text-xl mb-4">
               🎉 Chúc mừng!
             </h2>
 
-            <p>
-              Bạn đạt{" "}
-              <span className="text-blue-600 font-bold">{score}</span> điểm
+            {/* SCORE */}
+            <p className="text-gray-700">
+              Bạn đạt
             </p>
 
-            <div className="flex justify-center gap-4 mt-6">
+            <p className="text-3xl font-bold text-blue-600 mt-1">
+              {score} điểm
+            </p>
+
+            {/* LEVEL */}
+            <p className="mt-3 text-gray-600">
+              Xếp loại:
+            </p>
+
+            <p className="text-lg font-bold text-red-600">
+              {getCertificateLevel(score)}
+            </p>
+
+            {/* NOTE */}
+            {score >= 5 && (
+              <p className="text-sm text-gray-500 mt-2">
+                🎓 Bạn đủ điều kiện nhận chứng chỉ
+              </p>
+            )}
+
+            {/* BUTTON */}
+            <div className="flex justify-center gap-3 mt-6">
 
               {/* ĐÓNG */}
               <button
                 onClick={() => setShowPopup(false)}
-                className="px-4 py-2 bg-gray-200 rounded"
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
               >
                 Đóng
+              </button>
+
+              {/* XEM CHỨNG CHỈ */}
+              <button
+                onClick={() => navigate("/profile-user")}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                🎓 Chứng chỉ
               </button>
 
               {/* LÀM LẠI */}
@@ -444,7 +567,7 @@ const ExamDetail = () => {
                     console.error(err);
                   }
                 }}
-                className="px-4 py-2 bg-green-600 text-white rounded"
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
                 Làm lại
               </button>
