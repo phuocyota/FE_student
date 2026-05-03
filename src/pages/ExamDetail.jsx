@@ -96,6 +96,14 @@ const ExamDetail = () => {
       });
 
       if (res.success) {
+        // 🔥 Lưu questionBankName từ API
+        const updatedExam = {
+          ...exam,
+          title: res.data.questionBankName || qb.title,
+        };
+        setExam(updatedExam);
+        localStorage.setItem("current_exam", JSON.stringify(updatedExam));
+
         navigate(`/exam-doing/${qb.id}`, {
           state: {
             attemptId: res.data.attemptId,
@@ -135,8 +143,8 @@ const ExamDetail = () => {
         if (res.success) {
           const mapped = res.data.data.map(item => ({
             attemptId: item.id,
-            score: item.score,
-            total: item.questionBank?.totalScore,
+            score: item.score || 0,
+            total: item.questionBank?.totalScore || item.totalScore || 100,
             date: item.submittedAt || item.startedAt,
             time: calculateTime(item.startedAt, item.submittedAt),
           }));
