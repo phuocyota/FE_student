@@ -14,6 +14,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   const [user, setUser] = useState(null); // 🔥 để null ban đầu
+  const [certificates, setCertificates] = useState([]); // 🔥 lưu certificates
 
   const certRef = useRef();
 
@@ -61,6 +62,11 @@ const Profile = () => {
         // 🔥 THÊM DÒNG NÀY
         localStorage.setItem("user", JSON.stringify(mappedUser));
 
+        // 🔥 Lưu certificates từ API
+        if (data.certificates && Array.isArray(data.certificates)) {
+          setCertificates(data.certificates);
+        }
+
       } catch (error) {
         console.error("Fetch user error:", error);
       }
@@ -95,7 +101,7 @@ const Profile = () => {
         <ProfileStats />
 
 
-        <ProfileCertificate />
+        <ProfileCertificate certificates={certificates} />
 
       </div>
     </div>

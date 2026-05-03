@@ -3,17 +3,14 @@ import Certificate from "./Certificate";
 import html2canvas from "html2canvas";
 // import jsPDF from "jspdf";
 
-const ProfileCertificate = () => {
+const ProfileCertificate = ({ certificates = [] }) => {
   const certRef = useRef();
 
   const [selectedCert, setSelectedCert] = useState(null);
-
-  const certList = JSON.parse(localStorage.getItem("certificates") || "[]");
-  
 const [downloadCert, setDownloadCert] = useState(null);
 
   // 🔥 group theo môn
-  const grouped = certList.reduce((acc, cert) => {
+  const grouped = certificates.reduce((acc, cert) => {
     if (!acc[cert.subject]) acc[cert.subject] = [];
     acc[cert.subject].push(cert);
     return acc;
@@ -62,7 +59,7 @@ const handleOpenNewTab = (cert) => {
         🎓 Chứng chỉ đã hoàn thành
       </h3>
 
-      {certList.length === 0 ? (
+      {certificates.length === 0 ? (
         <div className="text-center text-gray-500 py-10">
           Bạn chưa có chứng chỉ nào
         </div>
@@ -158,7 +155,7 @@ const handleOpenNewTab = (cert) => {
       {/* CONTENT */}
       <div className="p-4 flex justify-center">
         {/* ❗ KHÔNG dùng scale nữa */}
-        <div className="w-full max-w-[1000px]">
+        <div className="w-full max-w-[842px]">
           <Certificate ref={certRef} data={selectedCert} />
         </div>
       </div>

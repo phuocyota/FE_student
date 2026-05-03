@@ -49,3 +49,8 @@ export const getCurrentUser = async () => {
   const res = await fetch(API.STUDENT.ME);
   return parseResponse(res);
 };
+
+export const getCertificates = async () => {
+  const res = await fetch(API.STUDENT.CERTIFICATES);
+  return parseResponse(res);
+};

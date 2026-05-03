@@ -1,122 +1,134 @@
 import React, { forwardRef } from "react";
-import CDS_BLUE from "../../assets/certificates/GCN-GD-CDS-01.png";
-import CDS_RED from "../../assets/certificates/GCN-GD-CDS-02.png";
-
-import KNS_BLUE from "../../assets/certificates/GCN-GD-KNS-01.png";
-import KNS_RED from "../../assets/certificates/GCN-GD-KNS-02.png";
-
-import STEM_BLUE from "../../assets/certificates/GCV-GD-STEM-01.png";
-import STEM_RED from "../../assets/certificates/GCV-GD-STEM-02.png";
+import { getTemplateConfig } from "../../config/certificateTemplates";
 
 const Certificate = forwardRef(({ data }, ref) => {
-      if (!data) return null;
+  if (!data) {
+    return <div className="text-center p-4">Không có dữ liệu chứng chỉ</div>;
+  }
 
+  // Lấy template config từ certificateTemplates.js
+  const templateConfig = getTemplateConfig(data.subject, data.level);
+  const bgImage = templateConfig?.bgImage;
+  const fieldPositions = templateConfig?.fieldPositions || {
+    name: { top: 260, left: 340, fontSize: 22, color: "#000", fontWeight: "600" },
+    className: { top: 303, left: 277, fontSize: 20, color: "#000" },
+    school: { top: 303, right: 390, fontSize: 20, color: "#000" },
+    day: { top: 423, left: 490, fontSize: 16, color: "#777", fontStyle: "italic" },
+    month: { top: 423, left: 557, fontSize: 16, color: "#777", fontStyle: "italic" },
+  };
 
-      const CERT_MAP = {
-            CDS: {
-                  normal: CDS_BLUE,
-                  excellent: CDS_RED,
-            },
-            KNS: {
-                  normal: KNS_BLUE,
-                  excellent: KNS_RED,
-            },
-            STEM: {
-                  normal: STEM_BLUE,
-                  excellent: STEM_RED,
-            },
-      };
+  // Nếu BE trả về fieldPositions, dùng đó thay thế
+  if (data.fieldPositions) {
+    Object.assign(fieldPositions, data.fieldPositions);
+  }
 
+  // Fallback nếu không có bgImage
+  if (!bgImage) {
+    return <div className="text-center p-4 text-red-600">Không tìm thấy mẫu chứng chỉ cho {data.subject}</div>;
+  }
 
-      const SUBJECT_MAP = {
-            "Công dân số": "CDS",
-            "Kỹ năng sống": "KNS",
-            "STEM": "STEM",
-      };
+  const getDateParts = (dateStr) => {
+    const date = new Date(dateStr);
+    return {
+      day: String(date.getDate()).padStart(2, "0"),
+      month: String(date.getMonth() + 1).padStart(2, "0"),
+    };
+  };
 
-      const subjectKey = SUBJECT_MAP[data.subject?.trim()];
+  const { day, month } = getDateParts(data.date);
 
-      const isExcellent = data.level === "Xuất sắc";
+  return (
+    <div
+      ref={ref}
+      style={{
+        width: "842px",
+        height: "595px",
+        position: "relative",
+        fontFamily: "Times New Roman, serif",
+      }}
+    >
+      {/* Background */}
+      <img
+        src={bgImage}
+        alt="certificate"
+        style={{
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+        }}
+      />
 
-      const bg =
-            CERT_MAP[subjectKey]?.[isExcellent ? "excellent" : "normal"] ||
-            CERT_MAP["CDS"].normal; // fallback
+      <div className="absolute inset-0 text-black">
+        {/* NAME */}
+        <p style={{
+          position: "absolute",
+          top: `${fieldPositions.name.top}px`,
+          left: `${fieldPositions.name.left}px`,
+          fontSize: `${fieldPositions.name.fontSize}px`,
+          color: fieldPositions.name.color,
+          fontWeight: fieldPositions.name.fontWeight,
+          margin: 0
+        }}>
+          {data.name}
+        </p>
 
+        {/* CLASS */}
+        <p style={{
+          position: "absolute",
+          top: `${fieldPositions.className.top}px`,
+          left: `${fieldPositions.className.left}px`,
+          fontSize: `${fieldPositions.className.fontSize}px`,
+          color: fieldPositions.className.color,
+          margin: 0
+        }}>
+          {data.className}
+        </p>
 
+        {/* SCHOOL */}
+        <p style={{
+          position: "absolute",
+          top: `${fieldPositions.school.top}px`,
+          ...(fieldPositions.school.left !== undefined
+            ? { left: `${fieldPositions.school.left}px` }
+            : { right: `${fieldPositions.school.right}px` }),
+          fontSize: `${fieldPositions.school.fontSize}px`,
+          color: fieldPositions.school.color,
+          margin: 0
+        }}>
+          {data.school}
+        </p>
 
+        {/* DATE - DAY */}
+        <p style={{
+          position: "absolute",
+          top: `${fieldPositions.day.top}px`,
+          left: `${fieldPositions.day.left}px`,
+          fontSize: `${fieldPositions.day.fontSize}px`,
+          color: fieldPositions.day.color,
+          fontStyle: fieldPositions.day.fontStyle,
+          margin: 0
+        }}>
+          {day}
+        </p>
 
-
-      const getDateParts = (dateStr) => {
-            const date = new Date(dateStr);
-
-            return {
-                  day: String(date.getDate()).padStart(2, "0"),
-                  month: String(date.getMonth() + 1).padStart(2, "0"),
-                  year: date.getFullYear(),
-            };
-      };
-
-      const { day, month, year } = getDateParts(data.date);
-
-
-
-      return (
-            <div
-                  ref={ref}
-                  style={{
-                        width: "1000px",
-                        height: "700px",
-                        position: "relative",
-                        fontFamily: "Times New Roman, serif",
-                  }}
-            >
-                  {/* BG */}
-                  <img
-                        src={bg}
-                        alt="certificate"
-                        style={{
-                              position: "absolute",
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                        }}
-                  />
-
-                  <div className="absolute inset-0 text-black">
-
-                        {/* ================= NAME ================= */}
-                        <p className="absolute top-[260px] left-[340px] text-[22px] font-semibold">
-                              {data.name}
-                        </p>
-
-                        {/* ================= CLASS ================= */}
-                        <p className="absolute top-[303px] left-[277px] text-[20px]">
-                              {data.className}
-                        </p>
-
-                        {/* ================= SCHOOL ================= */}
-                        <p className="absolute top-[303px] right-[390px] text-[20px]">
-                              {data.school}
-                        </p>
-
-                        {/* ================= DATE ================= */}
-                        {/* DAY */}
-                        <p className="absolute top-[423px] left-[557px] text-[16px] italic text-gray-700">
-                              {month}
-                        </p>
-
-                        {/* MONTH */}
-                        <p className="absolute top-[423px] left-[490px] text-[16px] italic text-gray-700">
-                              {day}
-                        </p>
-
-
-
-
-
-                  </div>
-            </div>
-      );
+        {/* DATE - MONTH */}
+        <p style={{
+          position: "absolute",
+          top: `${fieldPositions.month.top}px`,
+          left: `${fieldPositions.month.left}px`,
+          fontSize: `${fieldPositions.month.fontSize}px`,
+          color: fieldPositions.month.color,
+          fontStyle: fieldPositions.month.fontStyle,
+          margin: 0
+        }}>
+          {month}
+        </p>
+      </div>
+    </div>
+  );
 });
+
+Certificate.displayName = "Certificate";
 
 export default Certificate;

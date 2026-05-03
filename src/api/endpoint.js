@@ -22,6 +22,7 @@ export const API = {
     UPDATE_AVATAR: (id) => `${API_BASE_URL}/users/${id}`,
     UPDATE_PROFILE: (id) => `${API_BASE_URL}/users/${id}`,
     ME: `${API_BASE_URL}/users/me`,
+    CERTIFICATES: `${API_BASE_URL}/users/me/certificates`,
   },
   ATTEMPT: {
     START: `${API_BASE_URL}/attempt/start`,
