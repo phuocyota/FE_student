@@ -16,6 +16,7 @@ const ExamDoing = () => {
 
   const attemptId = location.state?.attemptId;
   const [questions] = useState(location.state?.questions || []);
+  const questionBankName = location.state?.questionBankName;
 
   const [answers, setAnswers] = useState({});
   const questionRefs = useRef([]);
@@ -370,7 +371,7 @@ useEffect(() => {
             </p>
 
             <h2 className="font-semibold mb-3">
-              {mockExamData.title}
+              {questionBankName || mockExamData.title}
             </h2>
 
             <div className="mb-2 text-sm">
@@ -426,7 +427,7 @@ useEffect(() => {
           <div className="md:hidden p-4 border-t border-gray-200">
 
             <p className="text-sm font-semibold mb-3">
-              {mockExamData.title}
+              {questionBankName || mockExamData.title}
             </p>
 
             <div className="flex justify-between">

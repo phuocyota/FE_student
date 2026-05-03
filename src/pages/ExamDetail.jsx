@@ -96,18 +96,11 @@ const ExamDetail = () => {
       });
 
       if (res.success) {
-        // 🔥 Lưu questionBankName từ API
-        const updatedExam = {
-          ...exam,
-          title: res.data.questionBankName || qb.title,
-        };
-        setExam(updatedExam);
-        localStorage.setItem("current_exam", JSON.stringify(updatedExam));
-
         navigate(`/exam-doing/${qb.id}`, {
           state: {
             attemptId: res.data.attemptId,
             questions: res.data.questions,
+            questionBankName: res.data.questionBankName,
           },
         });
       }
