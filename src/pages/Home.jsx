@@ -47,7 +47,7 @@ const Home = () => {
         // const list = res?.data?.data || [];
         const list = res?.data?.data || [];
 
-        console.log("Grades:", list);
+       // console.log("Grades:", list);
 
         setGrades(list);
 

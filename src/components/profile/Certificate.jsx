@@ -1,14 +1,48 @@
 import React, { forwardRef } from "react";
-import certBlue from "../../assets/certificates/GCN-GD-CDS-01.png";
-import certRed from "../../assets/certificates/GCN-GD-CDS-02.png";
+import CDS_BLUE from "../../assets/certificates/GCN-GD-CDS-01.png";
+import CDS_RED from "../../assets/certificates/GCN-GD-CDS-02.png";
+
+import KNS_BLUE from "../../assets/certificates/GCN-GD-KNS-01.png";
+import KNS_RED from "../../assets/certificates/GCN-GD-KNS-02.png";
+
+import STEM_BLUE from "../../assets/certificates/GCV-GD-STEM-01.png";
+import STEM_RED from "../../assets/certificates/GCV-GD-STEM-02.png";
 
 const Certificate = forwardRef(({ data }, ref) => {
       if (!data) return null;
 
+
+      const CERT_MAP = {
+            CDS: {
+                  normal: CDS_BLUE,
+                  excellent: CDS_RED,
+            },
+            KNS: {
+                  normal: KNS_BLUE,
+                  excellent: KNS_RED,
+            },
+            STEM: {
+                  normal: STEM_BLUE,
+                  excellent: STEM_RED,
+            },
+      };
+
+
+      const SUBJECT_MAP = {
+            "Công dân số": "CDS",
+            "Kỹ năng sống": "KNS",
+            "STEM": "STEM",
+      };
+
+      const subjectKey = SUBJECT_MAP[data.subject?.trim()];
+
+      const isExcellent = data.level === "Xuất sắc";
+
       const bg =
-            data.level === "Xuất sắc"
-                  ? certRed
-                  : certBlue;
+            CERT_MAP[subjectKey]?.[isExcellent ? "excellent" : "normal"] ||
+            CERT_MAP["CDS"].normal; // fallback
+
+
 
 
 
@@ -39,6 +73,7 @@ const Certificate = forwardRef(({ data }, ref) => {
                   {/* BG */}
                   <img
                         src={bg}
+                        alt="certificate"
                         style={{
                               position: "absolute",
                               width: "100%",

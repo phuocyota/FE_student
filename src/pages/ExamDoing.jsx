@@ -92,9 +92,9 @@ const timeProgress = ((totalTime - timeLeft) / totalTime) * 100;
    
     // const answersSubmit = questions.map(q => answers[q.id]);
      
-      console.log("QUESTIONS ORDER:", questions.map(q => q.orderNo));
-      console.log("ANSWERS OBJECT:", answers);
-      console.log("FINAL SUBMIT:", answersSubmit);
+      // console.log("QUESTIONS ORDER:", questions.map(q => q.orderNo));
+      // console.log("ANSWERS OBJECT:", answers);
+      // console.log("FINAL SUBMIT:", answersSubmit);
       // console.log("SUBMIT:", answersSubmit);
 
       const res = await submitAttempt(attemptId, answersSubmit);
