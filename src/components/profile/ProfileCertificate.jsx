@@ -125,7 +125,7 @@ const handleOpenNewTab = (cert) => {
         </div>
       )}
 
-      {/* 🔥 MODAL XEM CERT */}
+     
       {/* 🔥 MODAL XEM CERT */}
 {selectedCert && (
   <div

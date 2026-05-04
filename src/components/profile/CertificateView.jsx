@@ -1,6 +1,8 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import Certificate from "./Certificate";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const CertificateView = () => {
   const { state } = useLocation();

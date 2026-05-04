@@ -43,6 +43,7 @@ const Certificate = forwardRef(({ data }, ref) => {
       style={{
         width: "842px",
         height: "595px",
+        
         position: "relative",
         fontFamily: "Times New Roman, serif",
       }}
