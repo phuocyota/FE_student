@@ -134,7 +134,7 @@ const handleOpenNewTab = (cert) => {
   >
     {/* CARD */}
     <div
-      className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[1100px]"
+      className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[1280px]"
       onClick={(e) => e.stopPropagation()} // tránh đóng khi click vào trong
     >
       {/* HEADER */}
@@ -153,9 +153,9 @@ const handleOpenNewTab = (cert) => {
       </div>
 
       {/* CONTENT */}
-      <div className="p-4 flex justify-center">
+      <div className="p-4 flex justify-center overflow-auto">
         {/* ❗ KHÔNG dùng scale nữa */}
-        <div className="w-full max-w-[842px]">
+        <div className="w-[1123px] max-w-none shrink-0">
           <Certificate ref={certRef} data={selectedCert} />
         </div>
       </div>

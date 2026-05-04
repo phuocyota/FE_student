@@ -14,68 +14,92 @@ import STEM_RED from "../assets/certificates/GCV-GD-STEM-02.png";
 import DIICHI_BLUE from "../assets/certificates/GCN-DIICHI-01.png";
 import DIICHI_RED from "../assets/certificates/GCN-DIICHI-02.png";
 
-const CDS_01_POSITIONS = {
-  name: { top: 213, left: 295, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 253, left: 248, fontSize: 15, color: "#000" },
-  school: { top: 253, left: 421, fontSize: 15, color: "#000" },
-  day: { top: 358, left: 408, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 358, left: 467, fontSize: 14, color: "#000", fontStyle: "italic" }
+const CDS_BLUE_POSITIONS = {
+  name: { top: 284, left: 393, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 338, left: 331, fontSize: 20, color: "#000" },
+  school: { top: 338, left: 562, fontSize: 20, color: "#000" },
+  day: { top: 478, left: 544, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 478, left: 623, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 478, left: 715, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 435, left: 469, fontSize: 24, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 435, left: 598, fontSize: 24, color: "#000", fontStyle: "italic" }
 };
 
-const CDS_02_POSITIONS = {
-  name: { top: 219, left: 295, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 259, left: 248, fontSize: 15, color: "#000" },
-  school: { top: 259, left: 400, fontSize: 15, color: "#000" },
-  day: { top: 358, left: 413, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 358, left: 468, fontSize: 14, color: "#000", fontStyle: "italic" }
+const CDS_RED_POSITIONS = {
+  name: { top: 292, left: 393, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 346, left: 331, fontSize: 20, color: "#000" },
+  school: { top: 346, left: 533, fontSize: 20, color: "#000" },
+  day: { top: 478, left: 551, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 478, left: 624, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 478, left: 715, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 443, left: 469, fontSize: 24, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 443, left: 598, fontSize: 24, color: "#000", fontStyle: "italic" }
 };
 
-const KNS_01_POSITIONS = {
-  name: { top: 247, left: 312, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 283, left: 265, fontSize: 18, color: "#000" },
-  school: { top: 283, left: 460, fontSize: 18, color: "#000" },
-  day: { top: 379, left: 526, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 379, left: 581, fontSize: 14, color: "#000", fontStyle: "italic" }
+const KNS_BLUE_POSITIONS = {
+  name: { top: 330, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 378, left: 353, fontSize: 24, color: "#000" },
+  school: { top: 378, left: 614, fontSize: 24, color: "#000" },
+  day: { top: 506, left: 702, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 506, left: 775, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 506, left: 871, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 472, left: 544, fontSize: 21, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 472, left: 654, fontSize: 21, color: "#000", fontStyle: "italic" }
 };
 
-const KNS_02_POSITIONS = {
-  name: { top: 247, left: 312, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 283, left: 265, fontSize: 18, color: "#000" },
-  school: { top: 283, left: 460, fontSize: 18, color: "#000" },
-  day: { top: 379, left: 526, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 379, left: 581, fontSize: 14, color: "#000", fontStyle: "italic" }
+const KNS_RED_POSITIONS = {
+  name: { top: 330, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 378, left: 353, fontSize: 24, color: "#000" },
+  school: { top: 378, left: 614, fontSize: 24, color: "#000" },
+  day: { top: 506, left: 702, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 506, left: 775, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 506, left: 871, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 472, left: 544, fontSize: 21, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 472, left: 654, fontSize: 21, color: "#000", fontStyle: "italic" }
 };
 
-const STEM_01_POSITIONS = {
-  name: { top: 241, left: 278, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 278, left: 227, fontSize: 15, color: "#000" },
-  school: { top: 278, left: 394, fontSize: 15, color: "#000" },
-  day: { top: 383, left: 381, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 383, left: 438, fontSize: 14, color: "#000", fontStyle: "italic" }
+const STEM_BLUE_POSITIONS = {
+  name: { top: 313, left: 371, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 365, left: 295, fontSize: 20, color: "#000" },
+  school: { top: 365, left: 543, fontSize: 20, color: "#000" },
+  day: { top: 504, left: 508, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 504, left: 598, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 504, left: 672, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 454, left: 533, fontSize: 21, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 454, left: 607, fontSize: 21, color: "#000", fontStyle: "italic" }
 };
 
-const STEM_02_POSITIONS = {
-  name: { top: 240, left: 268, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 277, left: 211, fontSize: 15, color: "#000" },
-  school: { top: 277, left: 377, fontSize: 15, color: "#000" },
-  day: { top: 383, left: 366, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 383, left: 424, fontSize: 14, color: "#000", fontStyle: "italic" }
+const STEM_RED_POSITIONS = {
+  name: { top: 313, left: 357, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 365, left: 281, fontSize: 20, color: "#000" },
+  school: { top: 365, left: 503, fontSize: 20, color: "#000" },
+  day: { top: 504, left: 528, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 504, left: 614, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 504, left: 694, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 454, left: 538, fontSize: 21, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 454, left: 612, fontSize: 21, color: "#000", fontStyle: "italic" }
 };
 
 const DIICHI_01_POSITIONS = {
-  name: { top: 236, left: 265, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 351, left: 248, fontSize: 15, color: "#000" },
-  school: { top: 351, left: 413, fontSize: 15, color: "#000" },
-  day: { top: 412, left: 509, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 412, left: 562, fontSize: 14, color: "#000", fontStyle: "italic" }
+  name: { top: 315, left: 353, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 468, left: 331, fontSize: 20, color: "#000" },
+  school: { top: 468, left: 551, fontSize: 20, color: "#000" },
+  day: { top: 550, left: 679, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 550, left: 750, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 550, left: 826, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 502, left: 553, fontSize: 23, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 502, left: 683, fontSize: 23, color: "#000", fontStyle: "italic" }
 };
 
 const DIICHI_02_POSITIONS = {
-  name: { top: 235, left: 274, fontSize: 20, color: "#000", fontWeight: "600" },
-  className: { top: 360, left: 248, fontSize: 15, color: "#000" },
-  school: { top: 360, left: 402, fontSize: 15, color: "#000" },
-  day: { top: 412, left: 524, fontSize: 14, color: "#000", fontStyle: "italic" },
-  month: { top: 412, left: 574, fontSize: 14, color: "#000", fontStyle: "italic" }
+  name: { top: 314, left: 365, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 480, left: 331, fontSize: 20, color: "#000" },
+  school: { top: 480, left: 536, fontSize: 20, color: "#000" },
+  day: { top: 550, left: 699, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 550, left: 766, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 550, left: 840, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 502, left: 584, fontSize: 23, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 502, left: 712, fontSize: 23, color: "#000", fontStyle: "italic" }
 };
 
 const clonePositions = (positions) => Object.fromEntries(
@@ -88,8 +112,8 @@ export const CERTIFICATE_TEMPLATES = {
     normal: CDS_BLUE,
     excellent: CDS_RED,
     positions: {
-      normal: CDS_01_POSITIONS,
-      excellent: CDS_02_POSITIONS
+      normal: CDS_BLUE_POSITIONS,
+      excellent: CDS_RED_POSITIONS
     }
   },
 
@@ -98,8 +122,8 @@ export const CERTIFICATE_TEMPLATES = {
     normal: KNS_BLUE,
     excellent: KNS_RED,
     positions: {
-      normal: KNS_01_POSITIONS,
-      excellent: KNS_02_POSITIONS
+      normal: KNS_BLUE_POSITIONS,
+      excellent: KNS_RED_POSITIONS
     }
   },
 
@@ -108,8 +132,8 @@ export const CERTIFICATE_TEMPLATES = {
     normal: STEM_BLUE,
     excellent: STEM_RED,
     positions: {
-      normal: STEM_01_POSITIONS,
-      excellent: STEM_02_POSITIONS
+      normal: STEM_BLUE_POSITIONS,
+      excellent: STEM_RED_POSITIONS
     }
   },
 
