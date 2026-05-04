@@ -15,29 +15,29 @@ import DIICHI_BLUE from "../assets/certificates/GCN-DIICHI-01.png";
 import DIICHI_RED from "../assets/certificates/GCN-DIICHI-02.png";
 
 const CDS_BLUE_POSITIONS = {
-  name: { top: 284, left: 393, fontSize: 27, color: "#000", fontWeight: "600" },
-  className: { top: 338, left: 331, fontSize: 20, color: "#000" },
-  school: { top: 338, left: 562, fontSize: 20, color: "#000" },
-  day: { top: 478, left: 544, fontSize: 19, color: "#000", fontStyle: "italic" },
-  month: { top: 478, left: 623, fontSize: 19, color: "#000", fontStyle: "italic" },
-  year: { top: 478, left: 715, fontSize: 19, color: "#000", fontStyle: "italic" },
-  yearStart: { top: 435, left: 469, fontSize: 24, color: "#000", fontStyle: "italic" },
-  yearEnd: { top: 435, left: 598, fontSize: 24, color: "#000", fontStyle: "italic" }
+  name: { top: 283, left: 393, fontSize: 27, color: "#000", fontWeight: "600" },
+  className: { top: 336, left: 331, fontSize: 20, color: "#000" },
+  school: { top: 336, left: 562, fontSize: 20, color: "#000" },
+  day: { top: 475, left: 554, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 475, left: 643, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 475, left: 715, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 420, left: 579, fontSize: 24, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 420, left: 648, fontSize: 24, color: "#000", fontStyle: "italic" }
 };
 
 const CDS_RED_POSITIONS = {
   name: { top: 292, left: 393, fontSize: 27, color: "#000", fontWeight: "600" },
   className: { top: 346, left: 331, fontSize: 20, color: "#000" },
   school: { top: 346, left: 533, fontSize: 20, color: "#000" },
-  day: { top: 478, left: 551, fontSize: 19, color: "#000", fontStyle: "italic" },
-  month: { top: 478, left: 624, fontSize: 19, color: "#000", fontStyle: "italic" },
-  year: { top: 478, left: 715, fontSize: 19, color: "#000", fontStyle: "italic" },
-  yearStart: { top: 443, left: 469, fontSize: 24, color: "#000", fontStyle: "italic" },
-  yearEnd: { top: 443, left: 598, fontSize: 24, color: "#000", fontStyle: "italic" }
+  day: { top: 475, left: 558, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 475, left: 645, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 475, left: 725, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 430, left: 565, fontSize: 24, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 430, left: 648, fontSize: 24, color: "#000", fontStyle: "italic" }
 };
 
 const KNS_BLUE_POSITIONS = {
-    name: { top: 328, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
+  name: { top: 328, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
   className: { top: 378, left: 353, fontSize: 24, color: "#000" },
   school: { top: 378, left: 584, fontSize: 24, color: "#000" },
   day: { top: 504, left: 707, fontSize: 19, color: "#000", fontStyle: "italic" },
