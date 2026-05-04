@@ -37,25 +37,25 @@ const CDS_RED_POSITIONS = {
 };
 
 const KNS_BLUE_POSITIONS = {
-  name: { top: 330, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
+    name: { top: 328, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
   className: { top: 378, left: 353, fontSize: 24, color: "#000" },
-  school: { top: 378, left: 614, fontSize: 24, color: "#000" },
-  day: { top: 506, left: 702, fontSize: 19, color: "#000", fontStyle: "italic" },
-  month: { top: 506, left: 775, fontSize: 19, color: "#000", fontStyle: "italic" },
-  year: { top: 506, left: 871, fontSize: 19, color: "#000", fontStyle: "italic" },
-  yearStart: { top: 472, left: 544, fontSize: 21, color: "#000", fontStyle: "italic" },
-  yearEnd: { top: 472, left: 654, fontSize: 21, color: "#000", fontStyle: "italic" }
+  school: { top: 378, left: 584, fontSize: 24, color: "#000" },
+  day: { top: 504, left: 707, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 504, left: 792, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 504, left: 871, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 472, left: 604, fontSize: 21, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 472, left: 684, fontSize: 21, color: "#000", fontStyle: "italic" }
 };
 
 const KNS_RED_POSITIONS = {
-  name: { top: 330, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
+  name: { top: 328, left: 416, fontSize: 27, color: "#000", fontWeight: "600" },
   className: { top: 378, left: 353, fontSize: 24, color: "#000" },
   school: { top: 378, left: 614, fontSize: 24, color: "#000" },
-  day: { top: 506, left: 702, fontSize: 19, color: "#000", fontStyle: "italic" },
-  month: { top: 506, left: 775, fontSize: 19, color: "#000", fontStyle: "italic" },
-  year: { top: 506, left: 871, fontSize: 19, color: "#000", fontStyle: "italic" },
-  yearStart: { top: 472, left: 544, fontSize: 21, color: "#000", fontStyle: "italic" },
-  yearEnd: { top: 472, left: 654, fontSize: 21, color: "#000", fontStyle: "italic" }
+  day: { top: 504, left: 709, fontSize: 19, color: "#000", fontStyle: "italic" },
+  month: { top: 504, left: 797, fontSize: 19, color: "#000", fontStyle: "italic" },
+  year: { top: 504, left: 871, fontSize: 19, color: "#000", fontStyle: "italic" },
+  yearStart: { top: 462, left: 604, fontSize: 21, color: "#000", fontStyle: "italic" },
+  yearEnd: { top: 462, left: 684, fontSize: 21, color: "#000", fontStyle: "italic" }
 };
 
 const STEM_BLUE_POSITIONS = {
