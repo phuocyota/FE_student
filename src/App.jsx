@@ -121,6 +121,7 @@ import ExamReview from "./pages/ExamReview";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import CertificateView from "./components/profile/CertificateView";
+import ExamRandom from "./pages/ExamRandom";
 
 import { Toaster } from "react-hot-toast";
 
@@ -193,6 +194,16 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/exam-random/:id"
+          element={
+            <ProtectedRoute>
+              <ExamRandom />
+            </ProtectedRoute>
+          }
+        />
+
 
         {/* EXAM ENGLISH */}
         <Route
