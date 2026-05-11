@@ -35,5 +35,9 @@ export const API = {
   `${API_BASE_URL}/attempt?questionBankId=${questionBankId}&examSetId=${examSetId}&status=${status}&page=${page}&size=${size}`,
      MY_STATISTICS: `${API_BASE_URL}/attempt/my-statistics`,
   },
+  QUESTION_BANK: {
+    RANDOM: (questionBankId) =>
+      `${API_BASE_URL}/question-bank/random/${questionBankId}`,
+  },
   
 };

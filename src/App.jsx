@@ -204,6 +204,14 @@ const App = () => {
           }
         />
 
+        <Route
+          path="/exam-random"
+          element={
+            <ProtectedRoute>
+              <ExamRandom />
+            </ProtectedRoute>
+          }
+        />
 
         {/* EXAM ENGLISH */}
         <Route
