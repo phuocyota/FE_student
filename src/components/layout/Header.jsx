@@ -250,7 +250,7 @@ const Header = () => {
 
 
   return (
-    <header className="bg-green-700 text-white relative">
+    <header className="bg-green-700 text-white relative pt-safe">
       {/* {/* <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between"> */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
 

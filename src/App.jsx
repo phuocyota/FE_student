@@ -134,7 +134,7 @@ const App = () => {
   const shouldHideHeader = hideHeaderRoutes.includes(location.pathname);
 
   return (
-    <>
+    <div className="min-h-screen px-safe pb-safe">
       <Toaster position="top-right" />
 
       {/* ✅ HEADER chỉ hiển thị khi KHÔNG phải trang certificate */}
@@ -245,7 +245,7 @@ const App = () => {
         />
         */}
       </Routes>
-    </>
+    </div>
   );
 };
 
