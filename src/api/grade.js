@@ -4,6 +4,7 @@ import { API } from "./endpoint";
 export const getGrades = () => {
   return apiRequest(API.GRADE.GET_ALL, {
     method: "GET",
+    skipAuth: true,
   });
 };
 

@@ -86,13 +86,14 @@ const buildUrl = (path) => {
 };
 
 export const apiRequest = async (path, options = {}) => {
+  const { skipAuth, ...requestOptions } = options;
   const response = await fetch(buildUrl(path), {
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(requestOptions.headers || {}),
     },
-    ...options,
-  });
+    ...requestOptions,
+  }, skipAuth ? null : undefined);
 
   return parseResponse(response);
 };

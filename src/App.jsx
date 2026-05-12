@@ -169,6 +169,7 @@ const App = () => {
 
         {/* LOGIN */}
         <Route path="/login" element={<Login />} />
+        <Route path="/login/random-exam" element={<ExamRandom />} />
 
         {/* EXAM LIST */}
         <Route path="/exam-set/:examSetId" element={<ExamList />} />
@@ -197,20 +198,12 @@ const App = () => {
 
         <Route
           path="/exam-random/:id"
-          element={
-            <ProtectedRoute>
-              <ExamRandom />
-            </ProtectedRoute>
-          }
+          element={<ExamRandom />}
         />
 
         <Route
           path="/exam-random"
-          element={
-            <ProtectedRoute>
-              <ExamRandom />
-            </ProtectedRoute>
-          }
+          element={<ExamRandom />}
         />
 
         {/* EXAM ENGLISH */}

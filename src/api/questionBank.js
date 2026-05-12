@@ -17,7 +17,7 @@ export const getRandomQuestion = async (
     query ? `?${query}` : ""
   }`;
 
-  const res = await fetch(url);
+  const res = await fetch(url, {}, null);
 
   if (res.status === 404) {
     const error = new Error("Da het cau hoi trong ngan hang");
