@@ -2,6 +2,7 @@
 // Định nghĩa tọa độ (positions) cho từng mẫu certificate
 
 import { CertificateLevel, CertificateSubject } from "./constants";
+import { getPrintPositions } from "./certificatePrintTemplates";
 import CDS_BLUE from "../assets/certificates/GCN-GD-CDS-01.png";
 import CDS_RED from "../assets/certificates/GCN-GD-CDS-02.png";
 
@@ -157,8 +158,8 @@ export const SUBJECT_TO_TEMPLATE = {
 };
 
 // 🎯 Get template config by subject
-export const getTemplateConfig = (subject, level) => {
-  const templateKey = SUBJECT_TO_TEMPLATE[subject?.trim()] || CertificateSubject.CDS;
+export const getTemplateConfig = (subject, level, options = {}) => {
+  const templateKey = SUBJECT_TO_TEMPLATE[subject?.trim()] || "CDS";
   const template = CERTIFICATE_TEMPLATES[templateKey];
   
   if (!template) return null;
@@ -167,10 +168,13 @@ export const getTemplateConfig = (subject, level) => {
   const isExcellent = level === CertificateLevel.GOOD_COMPLETION || level === CertificateLevel.EXCELLENT;
   const variant = isExcellent ? "excellent" : "normal";
   const bgImage = template[variant];
-  const fieldPositions = template.positions?.[variant] || template.positions;
+  const printPositions = options.positionMode === "print"
+    ? getPrintPositions(templateKey, variant)
+    : null;
+  const fieldPositions = printPositions || template.positions?.[variant] || template.positions;
 
   return {
     bgImage,
-    fieldPositions: clonePositions(fieldPositions)
+    fieldPositions: printPositions || clonePositions(fieldPositions)
   };
 };

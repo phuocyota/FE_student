@@ -1,13 +1,13 @@
 import React, { forwardRef } from "react";
 import { getTemplateConfig } from "../../config/certificateTemplates";
 
-const Certificate = forwardRef(({ data }, ref) => {
+const Certificate = forwardRef(({ data, positionMode }, ref) => {
   if (!data) {
     return <div className="text-center p-4">Không có dữ liệu chứng chỉ</div>;
   }
 
   // Lấy template config từ certificateTemplates.js
-  const templateConfig = getTemplateConfig(data.subject, data.level);
+  const templateConfig = getTemplateConfig(data.subject, data.level, { positionMode });
   const bgImage = templateConfig?.bgImage;
   const fieldPositions = templateConfig?.fieldPositions || {
     name: { top: 347, left: 453, fontSize: 29, color: "#000", fontWeight: "600" },

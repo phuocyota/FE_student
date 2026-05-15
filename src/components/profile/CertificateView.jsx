@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Certificate from "./Certificate";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 const CertificateView = () => {
+  const pdfRef = useRef(null);
   const { state } = useLocation();
   const cert =
   state?.cert ||
@@ -12,8 +13,23 @@ const CertificateView = () => {
 
   if (!cert) return <div>Không có dữ liệu</div>;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    const certificateNode = pdfRef.current;
+
+    if (!certificateNode) return;
+
+    const canvas = await html2canvas(certificateNode, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+    });
+
+    const imgData = canvas.toDataURL("image/png", 1.0);
+    const pdf = new jsPDF("landscape", "px", [1123, 794]);
+
+    pdf.addImage(imgData, "PNG", 0, 0, 1123, 794);
+    pdf.save(`ChungChi_${cert.subject}_${Date.now()}.pdf`);
   };
 
   
@@ -84,6 +100,10 @@ return (
         </div>
 
       </div>
+    </div>
+
+    <div className="fixed left-[-9999px] top-0">
+      <Certificate ref={pdfRef} data={cert} positionMode="print" />
     </div>
 
   </div>

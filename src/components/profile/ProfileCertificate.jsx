@@ -112,6 +112,13 @@ const handleOpenNewTab = (cert) => {
   Tải chứng chỉ
 </button>
 
+                      <button
+                        onClick={() => handleDownload(cert)}
+                        className="px-3 py-1 bg-purple-600 text-white rounded"
+                      >
+                        Tải PNG
+                      </button>
+
                     </div>
 
                   </div>
@@ -175,6 +182,13 @@ const handleOpenNewTab = (cert) => {
         >
           📄 Tải PDF
         </button>
+
+        <button
+          onClick={() => handleDownload(selectedCert)}
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+        >
+          Tải PNG
+        </button>
       </div>
     </div>
   </div>
@@ -184,7 +198,7 @@ const handleOpenNewTab = (cert) => {
 {/* CERTIFICATE ẨN ĐỂ EXPORT */}
 <div className="fixed left-[-9999px] top-0">
   {downloadCert && (
-    <Certificate ref={certRef} data={downloadCert} />
+    <Certificate ref={certRef} data={downloadCert} positionMode="print" />
   )}
 </div>
 
