@@ -211,7 +211,7 @@ const ExamDoingEnglish = () => {
                   Câu {question.orderNo}
                 </span>
 
-                <div className="my-4 font-medium">
+                <div translate="no" className="notranslate my-4 font-medium">
                   {renderChainContent(question.chain)}
                 </div>
 
@@ -231,8 +231,10 @@ const ExamDoingEnglish = () => {
                           : "hover:bg-gray-50"}
                       `}
                     >
-                      <strong translate="no" lang="en">{label}. </strong>
-                      {getAnswerContent(answer)}
+                      <div translate="no" className="notranslate">
+                        <strong translate="no" lang="en">{label}. </strong>
+                        {getAnswerContent(answer)}
+                      </div>
                     </div>
                   );
 

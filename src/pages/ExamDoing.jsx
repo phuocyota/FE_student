@@ -304,7 +304,7 @@ useEffect(() => {
                 {/* <p className="my-4 font-medium">
                   {question.content}
                 </p> */}
-                <div className="my-4 font-medium">
+                <div translate="no" className="notranslate my-4 font-medium">
                   {renderChainContent(question.chain)}
                 </div>
 
@@ -328,7 +328,7 @@ useEffect(() => {
                       {/* <div>
                         <strong>{label}.</strong> {answer.content}
                       </div> */}
-                      <div>
+                      <div translate="no" className="notranslate">
                         <strong translate="no" lang="en">{label}. </strong>
                         {getAnswerContent(answer)}
                       </div>
