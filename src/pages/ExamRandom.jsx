@@ -197,7 +197,7 @@ const ExamRandom = () => {
               }}
               className={`w-full text-left border rounded-xl p-4 flex gap-3 cursor-pointer ${answerClass}`}
             >
-              <span className="font-semibold text-gray-900">{label}.</span>
+              <span translate="no" lang="en" className="font-semibold text-gray-900">{label}.</span>
               <div className="flex-1 space-y-2">
                 {renderContent(buildContentChain(answer), "Dap an khong co noi dung.")}
               </div>

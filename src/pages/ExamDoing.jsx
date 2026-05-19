@@ -329,7 +329,7 @@ useEffect(() => {
                         <strong>{label}.</strong> {answer.content}
                       </div> */}
                       <div>
-                        <strong>{label}. </strong>
+                        <strong translate="no" lang="en">{label}. </strong>
                         {getAnswerContent(answer)}
                       </div>
 

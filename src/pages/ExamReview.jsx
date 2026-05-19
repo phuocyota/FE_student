@@ -325,7 +325,7 @@ const ExamReview = () => {
       `}
     >
       <div>
-        <strong>{label}. </strong>
+        <strong translate="no" lang="en">{label}. </strong>
         {renderChainContent(answer.chain)}
       </div>
 

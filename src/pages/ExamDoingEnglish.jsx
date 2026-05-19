@@ -231,7 +231,7 @@ const ExamDoingEnglish = () => {
                           : "hover:bg-gray-50"}
                       `}
                     >
-                      <strong>{label}. </strong>
+                      <strong translate="no" lang="en">{label}. </strong>
                       {getAnswerContent(answer)}
                     </div>
                   );
