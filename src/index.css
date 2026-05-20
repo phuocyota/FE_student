@@ -37,6 +37,16 @@
   }
 }
 
+.app-content-with-mobile-sidebar {
+  padding-left: 64px;
+}
+
+@media (min-width: 768px) {
+  .app-content-with-mobile-sidebar {
+    padding-left: 0;
+  }
+}
+
 
 * {
   font-family: "Outfit", sans-serif;

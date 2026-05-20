@@ -33,94 +33,95 @@ const App = () => {
       {/* ✅ HEADER chỉ hiển thị khi KHÔNG phải trang certificate */}
       {!shouldHideHeader && <Header />}
 
-      <Routes>
-        {/* 🔥 TRANG KHÔNG HEADER */}
-        <Route path="/certificate-view" element={<CertificateView />} />
+      <main className={shouldHideHeader ? "" : "app-content-with-mobile-sidebar"}>
+        <Routes>
+          {/* 🔥 TRANG KHÔNG HEADER */}
+          <Route path="/certificate-view" element={<CertificateView />} />
 
-        {/* HOME */}
-        <Route path="/" element={<Home />} />
+          {/* HOME */}
+          <Route path="/" element={<Home />} />
 
-        {/* DASHBOARD */}
-        <Route
-          path="/exam-dashboard"
-          element={
-            <ProtectedRoute>
-              <ExamDashboard />
-            </ProtectedRoute>
-          }
-        />
+          {/* DASHBOARD */}
+          <Route
+            path="/exam-dashboard"
+            element={
+              <ProtectedRoute>
+                <ExamDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* PROFILE */}
-        <Route
-          path="/profile-user"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+          {/* PROFILE */}
+          <Route
+            path="/profile-user"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* LOGIN */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/login/random-exam" element={<ExamRandom />} />
+          {/* LOGIN */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/login/random-exam" element={<ExamRandom />} />
 
-        {/* EXAM LIST */}
-        <Route path="/exam-set/:examSetId" element={<ExamList />} />
-        <Route path="/exam-set-detail/:examSetId" element={<ExamDetail />} />
-        <Route path="/exam-set-all/:subjectId" element={<ExamList />} />
+          {/* EXAM LIST */}
+          <Route path="/exam-set/:examSetId" element={<ExamList />} />
+          <Route path="/exam-set-detail/:examSetId" element={<ExamDetail />} />
+          <Route path="/exam-set-all/:subjectId" element={<ExamList />} />
 
-        {/* EXAM DETAIL */}
-        <Route
-          path="/exam/:examSetId/:id"
-          element={
-            <ProtectedRoute>
-              <ExamDetail />
-            </ProtectedRoute>
-          }
-        />
+          {/* EXAM DETAIL */}
+          <Route
+            path="/exam/:examSetId/:id"
+            element={
+              <ProtectedRoute>
+                <ExamDetail />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* EXAM DOING */}
-        <Route
-          path="/exam-doing/:id"
-          element={
-            <ProtectedRoute>
-              <ExamDoing />
-            </ProtectedRoute>
-          }
-        />
+          {/* EXAM DOING */}
+          <Route
+            path="/exam-doing/:id"
+            element={
+              <ProtectedRoute>
+                <ExamDoing />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/exam-random/:id"
-          element={<ExamRandom />}
-        />
+          <Route
+            path="/exam-random/:id"
+            element={<ExamRandom />}
+          />
 
-        <Route
-          path="/exam-random"
-          element={<ExamRandom />}
-        />
+          <Route
+            path="/exam-random"
+            element={<ExamRandom />}
+          />
 
-        {/* EXAM ENGLISH */}
-        <Route
-          path="/exam-doing-english"
-          element={
-            <ProtectedRoute>
-              <ExamDoingEnglish />
-            </ProtectedRoute>
-          }
-        />
+          {/* EXAM ENGLISH */}
+          <Route
+            path="/exam-doing-english"
+            element={
+              <ProtectedRoute>
+                <ExamDoingEnglish />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* REVIEW */}
-        <Route
-          path="/exam-review/:id"
-          element={
-            <ProtectedRoute>
-              <ExamReview />
-            </ProtectedRoute>
-          }
-        />
+          {/* REVIEW */}
+          <Route
+            path="/exam-review/:id"
+            element={
+              <ProtectedRoute>
+                <ExamReview />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* ⚠️ nếu không dùng thì nên xoá tránh conflict */}
-        {/* 
+          {/* ⚠️ nếu không dùng thì nên xoá tránh conflict */}
+          {/* 
         <Route
           path="/exam-review/:attemptId"
           element={
@@ -130,7 +131,8 @@ const App = () => {
           }
         />
         */}
-      </Routes>
+        </Routes>
+      </main>
     </div>
   );
 };

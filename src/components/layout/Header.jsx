@@ -250,12 +250,12 @@ const Header = () => {
 
 
   return (
-    <header className="bg-green-700 text-white relative pt-safe">
+    <header className="fixed md:relative left-0 top-0 z-40 h-screen w-16 bg-green-700 text-white pt-safe md:h-auto md:w-full">
       {/* {/* <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between"> */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+      <div className="mx-auto flex h-full max-w-7xl flex-col items-center justify-between gap-4 px-1.5 py-4 md:h-16 md:flex-row md:px-6 md:py-0">
 
         <div className="flex items-center">
-          <div className="w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden shrink-0">
+          <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 md:h-14 md:w-14">
             <Link to="/">
               <img
                 src={logo}
@@ -267,7 +267,7 @@ const Header = () => {
         </div>
 
         {/* MENU CENTER */}
-        <nav className=" flex justify-center items-center gap-6 md:gap-8  ">
+        <nav className="flex flex-1 flex-col items-center justify-start gap-3 md:flex-none md:flex-row md:justify-center md:gap-8">
 
           {/* THI */}
           <div
@@ -277,13 +277,13 @@ const Header = () => {
               setShowExamMenu(!showExamMenu);
               navigate("/"); // thêm dòng này
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition font-semibold
+            className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] transition cursor-pointer font-semibold md:w-auto md:flex-row md:gap-2 md:px-4 md:text-base
   ${activeMenu === "exam"
                 ? "bg-white text-green-700"
                 : "hover:bg-green-600"
               }`}
           >
-            <GraduationCap size={18} />
+            <GraduationCap className="h-4 w-4 md:h-[18px] md:w-[18px]" />
             Thi
           </div>
 
@@ -294,23 +294,23 @@ const Header = () => {
               setActiveMenu("profile");
               setShowExamMenu(false);
             }}
-            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition whitespace-nowrap font-semibold
+            className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] transition font-semibold md:w-auto md:flex-row md:gap-2 md:px-4 md:text-base
             ${activeMenu === "profile"
                 ? "bg-white text-green-700"
                 : "hover:bg-green-600"
               }`}
           >
-            <User size={18} />
+            <User className="h-4 w-4 md:h-[18px] md:w-[18px]" />
             <span className="whitespace-nowrap">Cá nhân</span>
           </NavLink>
         </nav>
 
         {/* LOGIN */}
-        <div className=" flex justify-end relative">
+        <div className="relative flex justify-end">
           {displayName ? (
             <div
               ref={userMenuRef}
-              className="flex items-center gap-3 text-white font-semibold"
+              className="flex flex-col items-center gap-3 text-white font-semibold md:flex-row"
             >
               {/* Text chỉ hiện từ md trở lên */}
               <span className="hidden md:inline whitespace-nowrap">
@@ -323,12 +323,12 @@ const Header = () => {
                 src={menuBar}
                 alt="menu"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-7 h-7 cursor-pointer flex-shrink-0"
+                className="h-6 w-6 cursor-pointer flex-shrink-0 md:h-7 md:w-7"
               />
 
               {/* ===== DROPDOWN ===== */}
               {showUserMenu && (
-                <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl p-4 z-50 text-gray-700">
+                <div className="absolute bottom-0 left-[60px] w-64 rounded-xl bg-white p-4 text-gray-700 shadow-xl md:bottom-auto md:left-auto md:right-0 md:top-12">
 
                   {/* Tên + ID */}
                   <div className="mb-3">
@@ -374,12 +374,12 @@ const Header = () => {
               to="/login"
               className="
 bg-white text-green-700 
-px-3 md:px-4 
+px-1.5 md:px-4 
 py-1.5 md:py-2 
-text-sm md:text-base 
+text-[11px] md:text-base 
 rounded-lg 
 font-medium 
-whitespace-nowrap
+text-center
 "
             >
               Đăng nhập
@@ -391,8 +391,8 @@ whitespace-nowrap
       {/* ================= SUB HEADER ================= */}
       {/* {showExamMenu && ( */}
       {showExamMenu && (
-        <div className="w-full bg-gray-200 text-gray-700 shadow-sm relative">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-center gap-8 md:gap-16 text-xs md:text-sm font-semibold whitespace-nowrap">
+        <div className="fixed left-16 top-0 h-screen w-[calc(100vw-64px)] bg-gray-200 text-gray-700 shadow-sm md:relative md:left-auto md:top-auto md:h-auto md:w-full">
+          <div className="mx-auto flex h-full max-w-7xl flex-col items-stretch justify-start gap-3 overflow-y-auto px-4 py-4 text-xs font-semibold md:h-14 md:flex-row md:items-center md:justify-center md:gap-16 md:overflow-visible md:px-6 md:py-0 md:text-sm md:whitespace-nowrap">
 
             {/* ================= GIÁO DỤC PHỔ THÔNG ================= */}
             <div
@@ -426,9 +426,10 @@ whitespace-nowrap
                   onClick={(e) => e.stopPropagation()}
                   className="
       fixed md:absolute
-      top-[120px] md:top-10
-      left-1/2 -translate-x-1/2
-      w-[95%] md:w-[900px]
+      top-4 md:top-10
+      left-[72px] md:left-1/2 md:-translate-x-1/2
+      h-[calc(100vh-32px)] md:h-auto
+      w-[calc(100vw-80px)] md:w-[900px]
       max-w-[1200px]
       bg-white rounded-2xl shadow-2xl
       p-4 md:p-8
@@ -551,7 +552,7 @@ whitespace-nowrap
                   </div>
 
                   {/* ================= MOBILE ================= */}
-                  <div className="md:hidden h-full max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
+                  <div className="md:hidden h-full overflow-y-auto pr-2">
 
                     {/* DANH SÁCH KHỐI */}
                     {!selectedGrade && (
@@ -710,9 +711,10 @@ whitespace-nowrap
                   onClick={(e) => e.stopPropagation()}
                   className="
               fixed md:absolute
-              top-[120px] md:top-10
-              left-1/2 -translate-x-1/2
-              w-[95%] md:w-[800px] 
+              top-4 md:top-10
+              left-[72px] md:left-1/2 md:-translate-x-1/2
+              h-[calc(100vh-32px)] md:h-auto
+              w-[calc(100vw-80px)] md:w-[800px] 
               max-w-[1000px]
               bg-white rounded-2xl shadow-2xl
               p-4 md:p-8
