@@ -33,7 +33,7 @@ const App = () => {
       {/* ✅ HEADER chỉ hiển thị khi KHÔNG phải trang certificate */}
       {!shouldHideHeader && <Header />}
 
-      <main className={shouldHideHeader ? "" : "app-content-with-mobile-sidebar"}>
+      <main>
         <Routes>
           {/* 🔥 TRANG KHÔNG HEADER */}
           <Route path="/certificate-view" element={<CertificateView />} />

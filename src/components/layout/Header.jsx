@@ -5,7 +5,6 @@ import menuBar from "../../assets/menu_bar.png";
 import { useNavigate } from "react-router-dom";
 import {
   GraduationCap,
-  BookOpen,
   User,
   ChevronDown,
 } from "lucide-react";
@@ -76,6 +75,25 @@ const Header = () => {
   const [showExamMenu, setShowExamMenu] = useState(false);
   const [activeMenu, setActiveMenu] = useState("");
   const [showMega, setShowMega] = useState(false);
+  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
+  const [floatingPosition, setFloatingPosition] = useState(() => {
+    try {
+      const saved = localStorage.getItem("floating_header_position");
+      return saved ? JSON.parse(saved) : { x: 16, y: 88 };
+    } catch {
+      return { x: 16, y: 88 };
+    }
+  });
+  const floatingHeaderRef = useRef(null);
+  const dragStateRef = useRef({
+    dragging: false,
+    moved: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+  });
 
   const [pinned, setPinned] = useState(false);      // giữ mở khi click
   const [selectedGrade, setSelectedGrade] = useState("Lớp 1");
@@ -115,9 +133,6 @@ const Header = () => {
   }, []);
 
   /* ====== Helpers ====== */
-  const generalData = examData["Giáo dục phổ thông"];
-  const subjects = generalData?.[selectedGrade];
-  const megaRef = useRef();
   const generalRef = useRef();
   const languageRef = useRef();
 
@@ -125,9 +140,6 @@ const Header = () => {
   //ngoại ngữ 
   const [showLanguageMega, setShowLanguageMega] = useState(false);
   const [pinnedLanguage, setPinnedLanguage] = useState(false);
-  const languageData = examData["Ngoại ngữ"];
-  const firstLanguage = Object.keys(languageData)[0];
-  const certificates = languageData[firstLanguage];
   const [selectedEnglishGrade, setSelectedEnglishGrade] = useState("Tiếng Anh - Khối 1");
 
   const englishData = examData["Ngoại ngữ"]["Tiếng Anh"];
@@ -145,6 +157,85 @@ const Header = () => {
   const userId = localStorage.getItem("userId");
   const displayName =
     localStorage.getItem("fullName") || fullName || user;
+
+  const clampFloatingPosition = (x, y) => {
+    const buttonSize = 64;
+    const padding = 12;
+    const maxX =
+      typeof window === "undefined"
+        ? x
+        : Math.max(padding, window.innerWidth - buttonSize - padding);
+    const maxY =
+      typeof window === "undefined"
+        ? y
+        : Math.max(padding, window.innerHeight - buttonSize - padding);
+
+    return {
+      x: Math.min(Math.max(padding, x), maxX),
+      y: Math.min(Math.max(padding, y), maxY),
+    };
+  };
+
+  const handleFloatingPointerDown = (event) => {
+    event.preventDefault();
+
+    dragStateRef.current = {
+      dragging: true,
+      moved: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: floatingPosition.x,
+      originY: floatingPosition.y,
+    };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleFloatingPointerMove = (event) => {
+    const dragState = dragStateRef.current;
+    if (!dragState.dragging || dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+
+    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+      dragState.moved = true;
+    }
+
+    setFloatingPosition(
+      clampFloatingPosition(dragState.originX + deltaX, dragState.originY + deltaY)
+    );
+  };
+
+  const handleFloatingPointerUp = (event) => {
+    const dragState = dragStateRef.current;
+    if (!dragState.dragging || dragState.pointerId !== event.pointerId) return;
+
+    dragState.dragging = false;
+
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser.
+    }
+
+    setFloatingPosition((currentPosition) => {
+      const nextPosition = clampFloatingPosition(
+        currentPosition.x,
+        currentPosition.y
+      );
+      localStorage.setItem(
+        "floating_header_position",
+        JSON.stringify(nextPosition)
+      );
+      return nextPosition;
+    });
+
+    if (!dragState.moved) {
+      setShowFloatingMenu((prev) => !prev);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
@@ -210,6 +301,33 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
+    const handleClickOutsideFloatingMenu = (event) => {
+      if (
+        floatingHeaderRef.current &&
+        !floatingHeaderRef.current.contains(event.target)
+      ) {
+        setShowFloatingMenu(false);
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutsideFloatingMenu);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutsideFloatingMenu);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setFloatingPosition((currentPosition) =>
+        clampFloatingPosition(currentPosition.x, currentPosition.y)
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
     const handleClickOutsideGeneral = (event) => {
       if (
         generalRef.current &&
@@ -249,150 +367,274 @@ const Header = () => {
 
 
 
+  const floatingPanelLeft =
+    typeof window === "undefined"
+      ? floatingPosition.x
+      : Math.min(floatingPosition.x, window.innerWidth - 292);
+  const floatingPanelTop =
+    typeof window === "undefined"
+      ? floatingPosition.y + 76
+      : Math.min(floatingPosition.y + 76, window.innerHeight - 340);
+
   return (
-    <header className="fixed md:relative left-0 top-0 z-40 h-screen w-16 bg-green-700 text-white pt-safe md:h-auto md:w-full">
-      {/* {/* <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between"> */}
-      <div className="mx-auto flex h-full max-w-7xl flex-col items-center justify-between gap-4 px-1.5 py-4 md:h-16 md:flex-row md:px-6 md:py-0">
-
-        <div className="flex items-center">
-          <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 md:h-14 md:w-14">
-            <Link to="/">
-              <img
-                src={logo}
-                alt="logo"
-                className="w-full h-full object-cover cursor-pointer"
-              />
-            </Link>
-          </div>
-        </div>
-
-        {/* MENU CENTER */}
-        <nav className="flex flex-1 flex-col items-center justify-start gap-3 md:flex-none md:flex-row md:justify-center md:gap-8">
-
-          {/* THI */}
-          <div
-            ref={generalRef}
-            onClick={() => {
-              setActiveMenu("exam");
-              setShowExamMenu(!showExamMenu);
-              navigate("/"); // thêm dòng này
-            }}
-            className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] transition cursor-pointer font-semibold md:w-auto md:flex-row md:gap-2 md:px-4 md:text-base
-  ${activeMenu === "exam"
-                ? "bg-white text-green-700"
-                : "hover:bg-green-600"
-              }`}
-          >
-            <GraduationCap className="h-4 w-4 md:h-[18px] md:w-[18px]" />
-            Thi
-          </div>
-
-          {/* CÁ NHÂN */}
-          <NavLink
-            to="/exam-dashboard"
-            onClick={() => {
-              setActiveMenu("profile");
-              setShowExamMenu(false);
-            }}
-            className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[11px] transition font-semibold md:w-auto md:flex-row md:gap-2 md:px-4 md:text-base
-            ${activeMenu === "profile"
-                ? "bg-white text-green-700"
-                : "hover:bg-green-600"
-              }`}
-          >
-            <User className="h-4 w-4 md:h-[18px] md:w-[18px]" />
-            <span className="whitespace-nowrap">Cá nhân</span>
-          </NavLink>
-        </nav>
-
-        {/* LOGIN */}
-        <div className="relative flex justify-end">
-          {displayName ? (
-            <div
-              ref={userMenuRef}
-              className="flex flex-col items-center gap-3 text-white font-semibold md:flex-row"
-            >
-              {/* Text chỉ hiện từ md trở lên */}
-              <span className="hidden md:inline whitespace-nowrap">
-                Xin chào! {displayName}
-                {/* Xin chào! {user?.username} */}
-              </span>
-
-              {/* Icon luôn hiển thị */}
-              <img
-                src={menuBar}
-                alt="menu"
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="h-6 w-6 cursor-pointer flex-shrink-0 md:h-7 md:w-7"
-              />
-
-              {/* ===== DROPDOWN ===== */}
-              {showUserMenu && (
-                <div className="absolute bottom-0 left-[60px] w-64 rounded-xl bg-white p-4 text-gray-700 shadow-xl md:bottom-auto md:left-auto md:right-0 md:top-12">
-
-                  {/* Tên + ID */}
-                  <div className="mb-3">
-                    <div className="font-semibold text-gray-800">{displayName}</div>
-                    {/* <div className="font-semibold text-gray-800">
-                      {user?.username}
-                    </div> */}
-                    <div className="text-sm text-gray-500">
-                      ID: {userId}
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-3 space-y-3">
-                    <Link
-                      to="/profile-user"
-                      className="block cursor-pointer hover:text-green-600"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      Thông tin cá nhân
-                    </Link>
-
-                    {/* Thông báo */}
-                    <Link
-                      to="/notifications"
-                      className="block hover:text-green-600 transition"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      Thông báo
-                    </Link>
-
-                    <div
-                      onClick={handleLogout}
-                      className="cursor-pointer text-red-500 hover:text-red-600"
-                    >
-                      Đăng xuất
-                    </div>
-                  </div>
-                </div>
-              )}
+    <header ref={floatingHeaderRef} className="contents">
+      <div className="hidden bg-green-700 text-white md:block md:relative md:pt-safe">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="w-14 h-14 rounded-full overflow-hidden shrink-0">
+              <Link to="/">
+                <img
+                  src={logo}
+                  alt="logo"
+                  className="w-full h-full object-cover cursor-pointer"
+                />
+              </Link>
             </div>
-          ) : (
-            <Link
-              to="/login"
-              className="
-bg-white text-green-700 
-px-1.5 md:px-4 
-py-1.5 md:py-2 
-text-[11px] md:text-base 
-rounded-lg 
-font-medium 
-text-center
-"
+          </div>
+
+          <nav className="flex justify-center items-center gap-8">
+            <div
+              ref={generalRef}
+              onClick={() => {
+                setActiveMenu("exam");
+                setShowExamMenu(!showExamMenu);
+                navigate("/");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition font-semibold
+                ${activeMenu === "exam"
+                  ? "bg-white text-green-700"
+                  : "hover:bg-green-600"
+                }`}
             >
-              Đăng nhập
-            </Link>
-          )}
+              <GraduationCap size={18} />
+              Thi
+            </div>
+
+            <NavLink
+              to="/exam-dashboard"
+              onClick={() => {
+                setActiveMenu("profile");
+                setShowExamMenu(false);
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition whitespace-nowrap font-semibold
+                ${activeMenu === "profile"
+                  ? "bg-white text-green-700"
+                  : "hover:bg-green-600"
+                }`}
+            >
+              <User size={18} />
+              <span className="whitespace-nowrap">Cá nhân</span>
+            </NavLink>
+          </nav>
+
+          <div className="flex justify-end relative">
+            {displayName ? (
+              <div
+                ref={userMenuRef}
+                className="flex items-center gap-3 text-white font-semibold"
+              >
+                <span className="hidden md:inline whitespace-nowrap">
+                  Xin chào! {displayName}
+                </span>
+
+                <img
+                  src={menuBar}
+                  alt="menu"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="w-7 h-7 cursor-pointer flex-shrink-0"
+                />
+
+                {showUserMenu && (
+                  <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl p-4 z-50 text-gray-700">
+                    <div className="mb-3">
+                      <div className="font-semibold text-gray-800">{displayName}</div>
+                      <div className="text-sm text-gray-500">ID: {userId}</div>
+                    </div>
+
+                    <div className="border-t pt-3 space-y-3">
+                      <Link
+                        to="/profile-user"
+                        className="block cursor-pointer hover:text-green-600"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        Thông tin cá nhân
+                      </Link>
+
+                      <Link
+                        to="/notifications"
+                        className="block hover:text-green-600 transition"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        Thông báo
+                      </Link>
+
+                      <div
+                        onClick={handleLogout}
+                        className="cursor-pointer text-red-500 hover:text-red-600"
+                      >
+                        Đăng xuất
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="bg-white text-green-700 px-4 py-2 text-base rounded-lg font-medium whitespace-nowrap"
+              >
+                Đăng nhập
+              </Link>
+            )}
+          </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        aria-label="Mở menu"
+        onPointerDown={handleFloatingPointerDown}
+        onPointerMove={handleFloatingPointerMove}
+        onPointerUp={handleFloatingPointerUp}
+        onPointerCancel={handleFloatingPointerUp}
+        className="fixed z-50 h-16 w-16 touch-none select-none overflow-hidden rounded-full border-4 border-white bg-white shadow-2xl ring-1 ring-black/10 active:scale-95 md:hidden"
+        style={{
+          left: floatingPosition.x,
+          top: floatingPosition.y,
+        }}
+      >
+        <img
+          src={logo}
+          alt="KIDO"
+          draggable="false"
+          className="h-full w-full object-cover"
+        />
+      </button>
+
+      {showFloatingMenu && (
+        <div
+          className="fixed z-50 w-72 rounded-2xl bg-white p-3 text-gray-800 shadow-2xl ring-1 ring-black/10 md:hidden"
+          style={{
+            left: floatingPanelLeft,
+            top: Math.max(12, floatingPanelTop),
+          }}
+        >
+          <div className="mb-3 flex items-center gap-3 border-b pb-3">
+            <div className="h-10 w-10 overflow-hidden rounded-full">
+              <img src={logo} alt="KIDO" className="h-full w-full object-cover" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-gray-900">KIDOEDU</div>
+            </div>
+          </div>
+
+          <nav className="space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveMenu("exam");
+                setShowExamMenu((prev) => !prev);
+                setShowFloatingMenu(false);
+                navigate("/");
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left font-semibold transition
+                ${activeMenu === "exam"
+                  ? "bg-green-700 text-white"
+                  : "text-gray-800 hover:bg-green-50 hover:text-green-700"
+                }`}
+            >
+              <GraduationCap size={20} />
+              Thi
+            </button>
+
+            <NavLink
+              to="/exam-dashboard"
+              onClick={() => {
+                setActiveMenu("profile");
+                setShowExamMenu(false);
+                setShowFloatingMenu(false);
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 font-semibold transition
+                ${activeMenu === "profile"
+                  ? "bg-green-700 text-white"
+                  : "text-gray-800 hover:bg-green-50 hover:text-green-700"
+                }`}
+            >
+              <User size={20} />
+              Cá nhân
+            </NavLink>
+          </nav>
+
+          <div className="mt-3 border-t pt-3">
+            {displayName ? (
+              <div ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left font-semibold text-gray-800 hover:bg-gray-100"
+                >
+                  <span className="truncate">{displayName}</span>
+                  <img src={menuBar} alt="menu" className="h-6 w-6 flex-shrink-0" />
+                </button>
+
+                {showUserMenu && (
+                  <div className="mt-2 rounded-xl bg-gray-50 p-3 text-gray-700">
+                    <div className="mb-3">
+                      <div className="font-semibold text-gray-800">{displayName}</div>
+                      <div className="text-sm text-gray-500">ID: {userId}</div>
+                    </div>
+
+                    <div className="border-t pt-3 space-y-3">
+                      <Link
+                        to="/profile-user"
+                        className="block cursor-pointer hover:text-green-600"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowFloatingMenu(false);
+                        }}
+                      >
+                        Thông tin cá nhân
+                      </Link>
+
+                      <Link
+                        to="/notifications"
+                        className="block hover:text-green-600 transition"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowFloatingMenu(false);
+                        }}
+                      >
+                        Thông báo
+                      </Link>
+
+                      <div
+                        onClick={handleLogout}
+                        className="cursor-pointer text-red-500 hover:text-red-600"
+                      >
+                        Đăng xuất
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setShowFloatingMenu(false)}
+                className="block rounded-xl bg-green-700 px-4 py-3 text-center font-semibold text-white hover:bg-green-800"
+              >
+                Đăng nhập
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ================= SUB HEADER ================= */}
       {/* {showExamMenu && ( */}
       {showExamMenu && (
-        <div className="fixed left-16 top-0 h-screen w-[calc(100vw-64px)] bg-gray-200 text-gray-700 shadow-sm md:relative md:left-auto md:top-auto md:h-auto md:w-full">
-          <div className="mx-auto flex h-full max-w-7xl flex-col items-stretch justify-start gap-3 overflow-y-auto px-4 py-4 text-xs font-semibold md:h-14 md:flex-row md:items-center md:justify-center md:gap-16 md:overflow-visible md:px-6 md:py-0 md:text-sm md:whitespace-nowrap">
+        <div className="fixed left-0 right-0 top-0 z-40 bg-gray-200 text-gray-700 shadow-sm md:relative md:z-auto">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-center gap-8 md:gap-16 text-xs md:text-sm font-semibold whitespace-nowrap">
 
             {/* ================= GIÁO DỤC PHỔ THÔNG ================= */}
             <div
@@ -426,10 +668,9 @@ text-center
                   onClick={(e) => e.stopPropagation()}
                   className="
       fixed md:absolute
-      top-4 md:top-10
-      left-[72px] md:left-1/2 md:-translate-x-1/2
-      h-[calc(100vh-32px)] md:h-auto
-      w-[calc(100vw-80px)] md:w-[900px]
+      top-16 md:top-10
+      left-1/2 -translate-x-1/2
+      w-[95%] md:w-[900px]
       max-w-[1200px]
       bg-white rounded-2xl shadow-2xl
       p-4 md:p-8
@@ -552,7 +793,7 @@ text-center
                   </div>
 
                   {/* ================= MOBILE ================= */}
-                  <div className="md:hidden h-full overflow-y-auto pr-2">
+                  <div className="md:hidden h-full max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
 
                     {/* DANH SÁCH KHỐI */}
                     {!selectedGrade && (
@@ -711,10 +952,9 @@ text-center
                   onClick={(e) => e.stopPropagation()}
                   className="
               fixed md:absolute
-              top-4 md:top-10
-              left-[72px] md:left-1/2 md:-translate-x-1/2
-              h-[calc(100vh-32px)] md:h-auto
-              w-[calc(100vw-80px)] md:w-[800px] 
+              top-16 md:top-10
+              left-1/2 -translate-x-1/2
+              w-[95%] md:w-[800px] 
               max-w-[1000px]
               bg-white rounded-2xl shadow-2xl
               p-4 md:p-8

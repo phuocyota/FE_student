@@ -1,13 +1,43 @@
 import React, { useRef, useState } from "react";
 import Certificate from "./Certificate";
-import html2canvas from "html2canvas";
 // import jsPDF from "jspdf";
+
+const encodeCertificate = (cert) =>
+  encodeURIComponent(
+    btoa(unescape(encodeURIComponent(JSON.stringify(cert))))
+  );
+
+const openCertificateInBrowser = (cert, mode = "png") => {
+  const certData = encodeCertificate(cert);
+  const url = new URL("/certificate-view", window.location.origin);
+  url.searchParams.set("mode", mode);
+  url.searchParams.set("cert", certData);
+
+  // Keep the old localStorage path as a fallback for normal desktop/new-tab usage.
+  localStorage.setItem("previewCert", JSON.stringify(cert));
+
+  const absoluteUrl = url.toString();
+  const userAgent = navigator.userAgent || "";
+  const isAndroid = /Android/i.test(userAgent);
+  const isInAppBrowser =
+    /FBAN|FBAV|Instagram|Line|Zalo|wv|WebView/i.test(userAgent);
+
+  if (isAndroid && isInAppBrowser) {
+    const intentUrl = `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=${url.protocol.replace(
+      ":",
+      ""
+    )};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`;
+    window.location.href = intentUrl;
+    return;
+  }
+
+  window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+};
 
 const ProfileCertificate = ({ certificates = [] }) => {
   const certRef = useRef();
 
   const [selectedCert, setSelectedCert] = useState(null);
-const [downloadCert, setDownloadCert] = useState(null);
 
   // 🔥 group theo môn
   const grouped = certificates.reduce((acc, cert) => {
@@ -16,40 +46,8 @@ const [downloadCert, setDownloadCert] = useState(null);
     return acc;
   }, {});
 
-  
-const handleDownload = async (cert) => {
-  setDownloadCert(cert);
-
-  setTimeout(async () => {
-    if (!certRef.current) return;
-
-    const canvas = await html2canvas(certRef.current, {
-      scale: 5, // 🔥 tăng lên 5 cho siêu nét
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-      letterRendering: true, // 🔥 fix mờ chữ
-    });
-
-    // 👉 convert ra ảnh chất lượng max
-    const imgData = canvas.toDataURL("image/png", 1.0);
-
-    // 👉 tạo link tải
-    const link = document.createElement("a");
-    link.href = imgData;
-    link.download = `ChungChi_${cert.subject}_${Date.now()}.png`;
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setDownloadCert(null);
-  }, 150);
-};
-
 const handleOpenNewTab = (cert) => {
-  localStorage.setItem("previewCert", JSON.stringify(cert)); // 🔥 set trước
-  window.open("/certificate-view", "_blank"); // 🔥 mở sau
+  openCertificateInBrowser(cert, "pdf");
 };
 
   return (
@@ -113,7 +111,7 @@ const handleOpenNewTab = (cert) => {
 </button>
 
                       <button
-                        onClick={() => handleDownload(cert)}
+                        onClick={() => openCertificateInBrowser(cert, "png")}
                         className="px-3 py-1 bg-purple-600 text-white rounded"
                       >
                         Tải PNG
@@ -184,7 +182,7 @@ const handleOpenNewTab = (cert) => {
         </button>
 
         <button
-          onClick={() => handleDownload(selectedCert)}
+          onClick={() => openCertificateInBrowser(selectedCert, "png")}
           className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
         >
           Tải PNG
@@ -193,14 +191,6 @@ const handleOpenNewTab = (cert) => {
     </div>
   </div>
 )}
-
- 
-{/* CERTIFICATE ẨN ĐỂ EXPORT */}
-<div className="fixed left-[-9999px] top-0">
-  {downloadCert && (
-    <Certificate ref={certRef} data={downloadCert} positionMode="print" />
-  )}
-</div>
 
     </div>
   );
