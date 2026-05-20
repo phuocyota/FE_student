@@ -26,6 +26,11 @@ const CertificateView = () => {
     decodeCertificate(params.get("cert")) ||
     JSON.parse(localStorage.getItem("previewCert"));
   const [isExporting, setIsExporting] = useState(false);
+  const [previewImage, setPreviewImage] = useState("");
+  const userAgent = navigator.userAgent || "";
+  const isWebKitDownloadRisk =
+    /iPhone|iPad|iPod/i.test(userAgent) ||
+    /FBAN|FBAV|Instagram|Line|Zalo|WebView|wv/i.test(userAgent);
 
   const createCanvas = async () => {
     const certificateNode = pdfRef.current;
@@ -46,8 +51,15 @@ const CertificateView = () => {
       const canvas = await createCanvas();
       if (!canvas) return;
 
+      const imgData = canvas.toDataURL("image/png", 1.0);
+
+      if (isWebKitDownloadRisk) {
+        setPreviewImage(imgData);
+        return;
+      }
+
       const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png", 1.0);
+      link.href = imgData;
       link.download = `ChungChi_${cert.subject}_${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
@@ -64,6 +76,12 @@ const CertificateView = () => {
       if (!canvas) return;
 
       const imgData = canvas.toDataURL("image/png", 1.0);
+
+      if (isWebKitDownloadRisk) {
+        setPreviewImage(imgData);
+        return;
+      }
+
       const pdf = new jsPDF("landscape", "px", [1123, 794]);
 
       pdf.addImage(imgData, "PNG", 0, 0, 1123, 794);
@@ -120,6 +138,27 @@ const CertificateView = () => {
 
 return (
   <div className="bg-white min-h-screen overflow-auto flex flex-col items-center p-4">
+    {previewImage && (
+      <div className="fixed inset-0 z-50 overflow-auto bg-white p-4">
+        <div className="mx-auto mb-3 flex max-w-4xl items-center justify-between gap-3 print:hidden">
+          <div className="text-sm text-gray-600">
+            Nếu đang ở WebView, hãy mở bằng Safari/Chrome rồi lưu ảnh.
+          </div>
+          <button
+            onClick={() => setPreviewImage("")}
+            className="rounded bg-gray-200 px-4 py-2"
+          >
+            Đóng
+          </button>
+        </div>
+
+        <img
+          src={previewImage}
+          alt="Chứng chỉ"
+          className="mx-auto h-auto w-full max-w-4xl"
+        />
+      </div>
+    )}
 
     {/* BUTTON */}
     <div className="mb-4 flex gap-3 print:hidden">
