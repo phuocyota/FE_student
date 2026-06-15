@@ -11,6 +11,9 @@ import ExamDoingEnglish from "./pages/ExamDoingEnglish";
 import ExamDashboard from "./pages/ExamDashboard";
 import Profile from "./pages/Profile";
 import ExamReview from "./pages/ExamReview";
+import GoldenBellExam from "./pages/GoldenBellExam";
+import GoldenBellArena from "./pages/GoldenBellArena";
+import TeacherGoldenBell from "./pages/TeacherGoldenBell";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import CertificateView from "./components/profile/CertificateView";
@@ -24,7 +27,9 @@ const App = () => {
   // 🔥 Các route KHÔNG hiển thị header
   const hideHeaderRoutes = ["/certificate-view"];
 
-  const shouldHideHeader = hideHeaderRoutes.includes(location.pathname);
+  const shouldHideHeader =
+    hideHeaderRoutes.includes(location.pathname) ||
+    location.pathname.startsWith("/golden-bell-arena");
 
   return (
     <div className="min-h-screen px-safe pb-safe">
@@ -98,6 +103,36 @@ const App = () => {
           <Route
             path="/exam-random"
             element={<ExamRandom />}
+          />
+
+          <Route
+            path="/golden-bell"
+            element={<GoldenBellExam />}
+          />
+
+          <Route
+            path="/golden-bell/:id"
+            element={<GoldenBellExam />}
+          />
+
+          <Route
+            path="/golden-bell-arena"
+            element={<GoldenBellArena />}
+          />
+
+          <Route
+            path="/golden-bell-arena/:id"
+            element={<GoldenBellArena />}
+          />
+
+          <Route
+            path="/teacher"
+            element={<TeacherGoldenBell />}
+          />
+
+          <Route
+            path="/teacher/:id"
+            element={<TeacherGoldenBell />}
           />
 
           {/* EXAM ENGLISH */}

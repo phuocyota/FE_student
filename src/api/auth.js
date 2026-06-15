@@ -10,3 +10,13 @@ export const loginStudent = ({ username, password, deviceId }) =>
       deviceId,
     }),
   });
+
+export const loginTeacher = ({ username, password, deviceId }) =>
+  apiRequest(API.AUTH.LOGIN_TEACHER, {
+    method: "POST",
+    body: JSON.stringify({
+      username,
+      password,
+      deviceId,
+    }),
+  });
