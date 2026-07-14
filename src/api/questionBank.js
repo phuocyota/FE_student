@@ -1,6 +1,11 @@
 import { API } from "./endpoint";
 import { fetch, parseResponse } from "./client";
 
+export const getQuestionBankDetail = async (questionBankId, token) => {
+  const res = await fetch(API.QUESTION_BANK.DETAIL(questionBankId), {}, token);
+  return parseResponse(res);
+};
+
 export const getRandomQuestion = async (
   questionBankId,
   excludeQuestionIds = []

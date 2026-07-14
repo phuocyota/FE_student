@@ -9,7 +9,6 @@ export const createAppSocket = (tokenOverride) => {
   const token =
     tokenOverride ||
     localStorage.getItem("accessToken") ||
-    localStorage.getItem("teacherAccessToken") ||
     "guest";
 
   return io(SOCKET_URL, {

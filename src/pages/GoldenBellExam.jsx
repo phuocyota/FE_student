@@ -13,9 +13,24 @@ import { toast } from "react-hot-toast";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
 
+const QUESTION_SECONDS = 15;
+
 const toArray = (value) => {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+};
+
+const getRemainingSeconds = (room) => {
+  if (!room?.currentQuestion || room.questionEndedAt) return 0;
+
+  const startedAt = Date.parse(room.questionStartedAt || "");
+  if (!Number.isFinite(startedAt)) return QUESTION_SECONDS;
+
+  const durationSeconds = room.questionDurationSeconds || QUESTION_SECONDS;
+  return Math.max(
+    0,
+    Math.ceil((startedAt + durationSeconds * 1000 - Date.now()) / 1000)
+  );
 };
 
 const buildContentChain = (node) => {
@@ -35,6 +50,12 @@ const buildContentChain = (node) => {
 };
 
 const createStudentId = () => {
+  const authenticatedUserId = localStorage.getItem("userId");
+  if (authenticatedUserId) {
+    sessionStorage.setItem("golden_bell_student_id", authenticatedUserId);
+    return authenticatedUserId;
+  }
+
   const existing = sessionStorage.getItem("golden_bell_student_id");
   if (existing) return existing;
 
@@ -48,11 +69,16 @@ const createStudentId = () => {
 };
 
 const getDefaultStudentName = () => {
+  const fullName = localStorage.getItem("fullName")?.trim();
+  if (fullName) return fullName;
+
+  const storedUser = localStorage.getItem("user") || "";
+
   try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    return localStorage.getItem("fullName") || user?.fullName || "";
+    const user = JSON.parse(storedUser || "null");
+    return user?.fullName || user?.userName || user || "Học sinh";
   } catch {
-    return localStorage.getItem("fullName") || "";
+    return storedUser || "Học sinh";
   }
 };
 
@@ -133,14 +159,18 @@ const GoldenBellRoom = ({ roomId }) => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [questionNo, setQuestionNo] = useState(0);
   const [studentId] = useState(createStudentId);
-  const [studentName, setStudentName] = useState(getDefaultStudentName);
+  const [studentName] = useState(getDefaultStudentName);
   const [room, setRoom] = useState(() => getInitialRoom(roomKey, roomId));
+  const [remainingSeconds, setRemainingSeconds] = useState(() =>
+    getRemainingSeconds(room)
+  );
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [roomError, setRoomError] = useState("");
 
   const socketRef = useRef(null);
   const roomRef = useRef(room);
   const lastQuestionIdRef = useRef(null);
+  const eliminationNoticeRef = useRef("");
 
   const contentChain = useMemo(() => buildContentChain(question), [question]);
   const answers = useMemo(() => {
@@ -156,6 +186,8 @@ const GoldenBellRoom = ({ roomId }) => {
   const currentStudent = room.students.find((student) => student.id === studentId);
   const hasSelected = Boolean(selectedAnswer);
   const isCorrect = Boolean(selectedAnswer?.isCorrect);
+  const isEliminated = currentStudent?.status === "eliminated";
+  const isQuestionClosed = Boolean(room.questionEndedAt);
   const joinedCount = room.students.length;
   const passedCount = room.students.filter(
     (student) => student.status === "passed" && student.lastQuestionNo === questionNo
@@ -201,6 +233,7 @@ const GoldenBellRoom = ({ roomId }) => {
         const nextRoom = JSON.parse(event.newValue);
         roomRef.current = nextRoom;
         setRoom(nextRoom);
+        setRemainingSeconds(getRemainingSeconds(nextRoom));
       } catch {
         // Ignore invalid updates.
       }
@@ -217,13 +250,26 @@ const GoldenBellRoom = ({ roomId }) => {
 
     const handleConnect = () => {
       setSocketStatus("connected");
-      socket.emit("golden-bell:join", { roomId }, (response) => {
-        if (response?.ok === false) {
-          setRoomError("Không tìm thấy phòng hoặc phòng đã kết thúc.");
-        } else {
-          setRoomError("");
+      socket.timeout(8000).emit(
+        "golden-bell:join",
+        {
+          roomId,
+          student: {
+            id: studentId,
+            name: studentName,
+            joinedAt: new Date().toISOString(),
+          },
+        },
+        (error, response) => {
+          if (error) {
+            setRoomError("Socket phòng thi không phản hồi. Vui lòng thử lại.");
+          } else if (response?.ok === false) {
+            setRoomError("Không tìm thấy phòng hoặc phòng đã kết thúc.");
+          } else {
+            setRoomError("");
+          }
         }
-      });
+      );
     };
 
     const handleDisconnect = () => {
@@ -235,6 +281,7 @@ const GoldenBellRoom = ({ roomId }) => {
 
       roomRef.current = nextRoom;
       setRoom(nextRoom);
+      setRemainingSeconds(getRemainingSeconds(nextRoom));
       localStorage.setItem(roomKey, JSON.stringify(nextRoom));
     };
 
@@ -252,7 +299,30 @@ const GoldenBellRoom = ({ roomId }) => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, roomKey]);
+  }, [roomId, roomKey, studentId, studentName]);
+
+  useEffect(() => {
+    const currentQuestionId = room.currentQuestion?.id;
+    if (!currentQuestionId) return undefined;
+
+    const timer = window.setInterval(() => {
+      setRemainingSeconds(
+        getRemainingSeconds({
+          currentQuestion: { id: currentQuestionId },
+          questionStartedAt: room.questionStartedAt,
+          questionDurationSeconds: room.questionDurationSeconds,
+          questionEndedAt: room.questionEndedAt,
+        })
+      );
+    }, 250);
+
+    return () => window.clearInterval(timer);
+  }, [
+    room.currentQuestion?.id,
+    room.questionDurationSeconds,
+    room.questionEndedAt,
+    room.questionStartedAt,
+  ]);
 
   useEffect(() => {
     roomRef.current = room;
@@ -282,6 +352,16 @@ const GoldenBellRoom = ({ roomId }) => {
     }
   }, [roomId]);
 
+  useEffect(() => {
+    if (!isEliminated || !currentStudent) return;
+
+    const noticeKey = `${roomId}:${currentStudent.id}:${currentStudent.lastQuestionNo || 0}`;
+    if (eliminationNoticeRef.current === noticeKey) return;
+
+    eliminationNoticeRef.current = noticeKey;
+    toast.error("Rất tiếc, bạn đã bị loại.", { duration: 6000 });
+  }, [currentStudent, isEliminated, roomId]);
+
   const updateCurrentStudent = useCallback(
     (updater) => {
       const existingStudent = room.students.find((student) => student.id === studentId);
@@ -297,61 +377,21 @@ const GoldenBellRoom = ({ roomId }) => {
     [room, saveRoom, studentId]
   );
 
-  const handleJoinRoom = (event) => {
-    event.preventDefault();
-
-    const name = studentName.trim();
-    if (!name) {
-      toast.error("Vui lòng nhập tên học sinh");
-      return;
-    }
-
-    const nextStudents = room.students.some((student) => student.id === studentId)
-      ? room.students.map((student) =>
-          student.id === studentId
-            ? {
-                ...student,
-                name,
-                status: "active",
-                joinedAt: student.joinedAt || new Date().toISOString(),
-              }
-            : student
-        )
-      : [
-          ...room.students,
-          {
-            id: studentId,
-            name,
-            status: "active",
-            joinedAt: new Date().toISOString(),
-            lastQuestionNo: 0,
-            correctCount: 0,
-            wrongCount: 0,
-          },
-        ];
-
-    const nextRoom = { ...room, students: nextStudents };
-    saveRoom(nextRoom, { emitSocket: false });
-
-    socketRef.current?.emit(
-      "golden-bell:join",
-      {
-        roomId,
-        student: nextStudents.find((student) => student.id === studentId),
-      },
-      (response) => {
-        if (response?.ok === false) {
-          setRoomError("Không thể tham gia phòng này.");
-        }
-      }
-    );
-  };
-
   const handleSelectAnswer = (answer) => {
     if (!answer || hasSelected) return;
 
     if (!currentStudent) {
       toast.error("Học sinh cần join phòng trước khi trả lời");
+      return;
+    }
+
+    if (isEliminated) {
+      toast.error("Bạn đã bị loại và không thể tiếp tục trả lời.");
+      return;
+    }
+
+    if (isQuestionClosed) {
+      toast.error("Đã hết thời gian trả lời câu hỏi này.");
       return;
     }
 
@@ -369,10 +409,10 @@ const GoldenBellRoom = ({ roomId }) => {
       updateCurrentStudent((student) => ({
         ...student,
         status: "eliminated",
+        eliminatedReason: "wrong-answer",
         lastQuestionNo: questionNo,
         wrongCount: (student.wrongCount || 0) + 1,
       }));
-      toast.error("Chưa chính xác");
     }
   };
 
@@ -464,13 +504,13 @@ const GoldenBellRoom = ({ roomId }) => {
                           : "Local fallback"}
                     </span>
                   </div>
-                  <h1 className="mt-1 text-2xl font-black md:text-3xl">
+                  <h1 className="mt-1 text-2xl font-normal md:text-3xl">
                     Sân thi đấu - Câu {questionNo || 0}
                   </h1>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
                 <div className="rounded-lg bg-white/15 px-4 py-2">
                   <p className="text-xs text-green-50">Đã join</p>
                   <p className="text-xl font-black">{joinedCount}</p>
@@ -482,6 +522,20 @@ const GoldenBellRoom = ({ roomId }) => {
                 <div className="rounded-lg bg-white/15 px-4 py-2">
                   <p className="text-xs text-green-50">Bị loại</p>
                   <p className="text-xl font-black text-red-200">{eliminatedCount}</p>
+                </div>
+                <div
+                  className={`rounded-lg px-4 py-2 ${
+                    question && remainingSeconds <= 5
+                      ? "bg-red-500/80"
+                      : "bg-white/15"
+                  }`}
+                >
+                  <p className="text-xs text-green-50">Thời gian</p>
+                  <p className="font-mono text-xl font-black text-white">
+                    {question
+                      ? `00:${String(remainingSeconds).padStart(2, "0")}`
+                      : "--:--"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -518,20 +572,10 @@ const GoldenBellRoom = ({ roomId }) => {
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleJoinRoom} className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <input
-                    value={studentName}
-                    onChange={(event) => setStudentName(event.target.value)}
-                    placeholder="Nhập tên học sinh"
-                    className="w-full rounded-lg border border-green-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-green-700 px-5 py-3 font-bold text-white hover:bg-green-800"
-                  >
-                    Vào sân
-                  </button>
-                </form>
+                <div className="rounded-lg border border-green-200 bg-white px-4 py-3">
+                  <p className="text-sm text-gray-500">Đang tự động vào sân</p>
+                  <p className="mt-1 font-bold text-gray-900">{studentName}</p>
+                </div>
               )}
             </div>
 
@@ -585,7 +629,7 @@ const GoldenBellRoom = ({ roomId }) => {
             {!question ? (
               <div className="flex min-h-72 flex-col items-center justify-center text-center">
                 <Bell className="mb-4 text-yellow-500" size={52} />
-                <p className="text-2xl font-black text-gray-900">Chờ giáo viên phát câu hỏi</p>
+                <p className="text-2xl font-normal text-gray-900">Chờ giáo viên phát câu hỏi</p>
                 <p className="mt-2 max-w-md text-sm text-gray-500">
                   Khi giáo viên bấm phát câu, nội dung sẽ tự hiển thị tại đây.
                 </p>
@@ -593,10 +637,10 @@ const GoldenBellRoom = ({ roomId }) => {
             ) : (
               <div className="space-y-7">
                 <div className="rounded-xl border border-green-100 bg-green-50 p-5 md:p-6">
-                  <div className="mb-3 inline-flex rounded-md bg-yellow-400 px-3 py-1 text-xs font-black uppercase tracking-wide text-gray-900">
+                  <div className="mb-3 inline-flex rounded-md bg-yellow-400 px-3 py-1 text-xs font-normal uppercase tracking-wide text-gray-900">
                     Câu hỏi hiện tại
                   </div>
-                  <div translate="no" className="notranslate space-y-4 text-xl font-black leading-8 text-gray-900 md:text-2xl">
+                  <div translate="no" className="notranslate space-y-4 text-xl font-normal leading-8 text-gray-900 md:text-2xl">
                     {renderContent(contentChain)}
                   </div>
                 </div>
@@ -623,7 +667,7 @@ const GoldenBellRoom = ({ roomId }) => {
                         <button
                           key={answer.id}
                           type="button"
-                          disabled={hasSelected}
+                          disabled={hasSelected || isEliminated || isQuestionClosed}
                           onClick={() => handleSelectAnswer(answer)}
                           className={`min-h-24 w-full rounded-xl border p-4 text-left shadow-sm transition ${answerClass}`}
                         >
@@ -645,7 +689,12 @@ const GoldenBellRoom = ({ roomId }) => {
           </div>
 
           <div className="flex min-h-16 items-center border-t border-gray-200 bg-gray-50 px-5 py-4">
-            {hasSelected ? (
+            {isEliminated ? (
+              <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
+                <XCircle size={18} />
+                Rất tiếc, bạn đã bị loại và không thể tiếp tục trả lời.
+              </div>
+            ) : hasSelected ? (
               <div
                 className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
                   isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"

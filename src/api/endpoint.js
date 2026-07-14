@@ -37,6 +37,8 @@ export const API = {
      MY_STATISTICS: `${API_BASE_URL}/attempt/my-statistics`,
   },
   QUESTION_BANK: {
+    DETAIL: (questionBankId) =>
+      `${API_BASE_URL}/question-bank/${questionBankId}`,
     RANDOM: (questionBankId) =>
       `${API_BASE_URL}/question-bank/random/${questionBankId}`,
   },

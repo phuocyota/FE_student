@@ -4,8 +4,20 @@ import { useParams } from "react-router-dom";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
 
-const TOTAL_SEATS = 50;
 const QUESTION_SECONDS = 15;
+
+const getRemainingSeconds = (room) => {
+  if (!room?.currentQuestion || room.questionEndedAt) return 0;
+
+  const startedAt = Date.parse(room.questionStartedAt || "");
+  if (!Number.isFinite(startedAt)) return QUESTION_SECONDS;
+
+  const durationSeconds = room.questionDurationSeconds || QUESTION_SECONDS;
+  return Math.max(
+    0,
+    Math.ceil((startedAt + durationSeconds * 1000 - Date.now()) / 1000)
+  );
+};
 
 const toArray = (value) => {
   if (!value) return [];
@@ -62,7 +74,6 @@ const GoldenBellArena = () => {
   const [roomError, setRoomError] = useState("");
   const [remainingSeconds, setRemainingSeconds] = useState(QUESTION_SECONDS);
   const socketRef = useRef(null);
-  const lastQuestionIdRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
   const activeCount = students.filter(
@@ -85,13 +96,9 @@ const GoldenBellArena = () => {
     });
   }, [room.currentQuestion]);
   const currentQuestionId = room.currentQuestion?.id;
-  const seats = useMemo(() => {
-    return Array.from({ length: Math.max(TOTAL_SEATS, students.length) }, (_, index) => ({
-      index,
-      student: students[index],
-    }));
-  }, [students]);
-
+  const questionStartedAt = room.questionStartedAt;
+  const questionDurationSeconds = room.questionDurationSeconds;
+  const questionEndedAt = room.questionEndedAt;
   useEffect(() => {
     const socket = createAppSocket();
     socketRef.current = socket;
@@ -127,14 +134,7 @@ const GoldenBellArena = () => {
         usedQuestionIds: toArray(nextRoom.usedQuestionIds),
       };
 
-      if (
-        normalizedRoom.currentQuestion?.id &&
-        normalizedRoom.currentQuestion.id !== lastQuestionIdRef.current
-      ) {
-        lastQuestionIdRef.current = normalizedRoom.currentQuestion.id;
-        setRemainingSeconds(QUESTION_SECONDS);
-      }
-
+      setRemainingSeconds(getRemainingSeconds(normalizedRoom));
       setRoom(normalizedRoom);
     };
 
@@ -157,12 +157,26 @@ const GoldenBellArena = () => {
   useEffect(() => {
     if (!currentQuestionId) return undefined;
 
-    const timer = window.setInterval(() => {
-      setRemainingSeconds((current) => Math.max(0, current - 1));
-    }, 1000);
+    const updateRemainingSeconds = () => {
+      setRemainingSeconds(
+        getRemainingSeconds({
+          currentQuestion: { id: currentQuestionId },
+          questionStartedAt,
+          questionDurationSeconds,
+          questionEndedAt,
+        })
+      );
+    };
+
+    const timer = window.setInterval(updateRemainingSeconds, 250);
 
     return () => window.clearInterval(timer);
-  }, [currentQuestionId]);
+  }, [
+    currentQuestionId,
+    questionDurationSeconds,
+    questionEndedAt,
+    questionStartedAt,
+  ]);
 
   const renderContent = (chain, className = "") => {
     if (!chain.length) return null;
@@ -209,10 +223,10 @@ const GoldenBellArena = () => {
           <div>
             <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-green-700">
               <Bell size={18} />
-              Dau truong kien thuc Rung chuong vang
+              Đấu trường kiến thức Rung chuông vàng
             </div>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-900">
-              San thi dau truc tiep
+            <h1 className="mt-2 text-3xl font-normal tracking-tight text-gray-900">
+              Sàn thi đấu trực tiếp
             </h1>
           </div>
 
@@ -247,10 +261,10 @@ const GoldenBellArena = () => {
 
             {room.currentQuestion ? (
               <>
-                <div className="mb-8 text-2xl font-black leading-9 text-gray-900">
+                <div className="mb-8 text-2xl font-normal leading-9 text-gray-900">
                   {renderContent(
                     questionContent,
-                    "text-2xl font-black leading-9 text-gray-900"
+                    "text-2xl font-normal leading-9 text-gray-900"
                   )}
                 </div>
 
@@ -276,7 +290,7 @@ const GoldenBellArena = () => {
             ) : (
               <div className="flex min-h-64 flex-col items-center justify-center text-center">
                 <Bell className="mb-4 text-yellow-500" size={52} />
-                <p className="text-2xl font-black">
+                <p className="text-2xl font-normal">
                   {roomError || "Chờ giáo viên phát câu hỏi"}
                 </p>
                 <p className="mt-2 text-gray-500">
@@ -290,21 +304,21 @@ const GoldenBellArena = () => {
 
           <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex flex-col gap-3 border-b border-gray-200 pb-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-green-700">
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-green-700">
                 <Users size={18} />
-                San thi dau {TOTAL_SEATS} si tu hoc sinh:
+                Thí sinh trong phòng:
                 <span className="text-gray-900">{activeCount}</span>
                 <span className="text-gray-400">/</span>
-                <span className="text-gray-900">{students.length || TOTAL_SEATS}</span>
-                <span className="text-gray-900">con tru</span>
+                <span className="text-gray-900">{students.length}</span>
+                <span className="text-gray-900">còn trụ</span>
               </div>
 
               <div className="flex gap-2 text-xs font-bold">
                 <span className="rounded border border-green-200 bg-green-50 px-3 py-1 text-green-700">
-                  Dang dau
+                  Đang đấu
                 </span>
                 <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1 text-gray-700">
-                  Ha bang: {eliminatedCount}
+                  Hạ bảng: {eliminatedCount}
                 </span>
                 <span className="rounded border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">
                   {socketStatus === "connected" ? "Online" : "Dang ket noi"}
@@ -312,38 +326,44 @@ const GoldenBellArena = () => {
               </div>
             </div>
 
-            <div className="grid max-h-[38vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10">
-              {seats.map(({ index, student }) => {
-                const isEliminated = student?.status === "eliminated";
-                const isPassed = student?.status === "passed";
-                const isEmpty = !student;
+            {students.length === 0 ? (
+              <div className="flex min-h-28 flex-col items-center justify-center text-center text-gray-500">
+                <Users className="mb-2 text-gray-400" size={30} />
+                <p className="text-sm font-medium">Chưa có học sinh tham gia phòng.</p>
+              </div>
+            ) : (
+              <div className="grid max-h-[38vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10">
+                {students.map((student, index) => {
+                  const isEliminated = student.status === "eliminated";
+                  const isPassed = student.status === "passed";
 
-                return (
-                  <div
-                    key={student?.id || index}
-                    className={`rounded-lg border px-3 py-3 text-center ${
-                      isEliminated
-                        ? "border-gray-200 bg-gray-100 opacity-50"
-                        : isPassed
-                          ? "border-green-400 bg-green-50"
-                          : "border-gray-200 bg-white"
-                    }`}
-                  >
+                  return (
                     <div
-                      className={`mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white ${getSeatColor(index)}`}
+                      key={student.id}
+                      className={`rounded-lg border px-3 py-3 text-center ${
+                        isEliminated
+                          ? "border-gray-200 bg-gray-100 opacity-50"
+                          : isPassed
+                            ? "border-green-400 bg-green-50"
+                            : "border-gray-200 bg-white"
+                      }`}
                     >
-                      {index + 1}
+                      <div
+                        className={`mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white ${getSeatColor(index)}`}
+                      >
+                        {index + 1}
+                      </div>
+                      <div className="truncate text-xs font-normal text-gray-900">
+                        {student.name}
+                      </div>
+                      <div className="mt-1 text-[10px] font-bold uppercase text-gray-500">
+                        {isEliminated ? "Hạ bảng" : "Đang đấu"}
+                      </div>
                     </div>
-                    <div className="truncate text-xs font-black text-gray-900">
-                      {student?.name || `Thi sinh ${index + 1}`}
-                    </div>
-                    <div className="mt-1 text-[10px] font-bold uppercase text-gray-500">
-                      {isEmpty ? "Cho vao san" : isEliminated ? "Ha bang" : "Dang dau"}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </main>
       </div>

@@ -1,7 +1,7 @@
  
 
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../assets/kido.jpg";
 import toast from "react-hot-toast";
 import cancelIcon from "../assets/cancle.png";
@@ -11,6 +11,12 @@ import { getUserById } from "../api/student";
 const Login = () => {
   // localStorage.clear();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedPath = location.state?.from;
+  const redirectPath =
+    typeof requestedPath === "string" && requestedPath.startsWith("/")
+      ? requestedPath
+      : "/";
 
   const [form, setForm] = useState({
     id: "",
@@ -160,7 +166,7 @@ const Login = () => {
       // 3️⃣ lưu user
       toast.success("Đăng nhập thành công!");
 
-      navigate("/");
+      navigate(redirectPath, { replace: true });
 
     } catch (submitError) {
       const message =

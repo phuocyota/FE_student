@@ -29,7 +29,8 @@ const App = () => {
 
   const shouldHideHeader =
     hideHeaderRoutes.includes(location.pathname) ||
-    location.pathname.startsWith("/golden-bell-arena");
+    location.pathname.startsWith("/golden-bell-arena") ||
+    location.pathname.startsWith("/teacher");
 
   return (
     <div className="min-h-screen px-safe pb-safe">
@@ -107,12 +108,20 @@ const App = () => {
 
           <Route
             path="/golden-bell"
-            element={<GoldenBellExam />}
+            element={
+              <ProtectedRoute>
+                <GoldenBellExam />
+              </ProtectedRoute>
+            }
           />
 
           <Route
             path="/golden-bell/:id"
-            element={<GoldenBellExam />}
+            element={
+              <ProtectedRoute>
+                <GoldenBellExam />
+              </ProtectedRoute>
+            }
           />
 
           <Route

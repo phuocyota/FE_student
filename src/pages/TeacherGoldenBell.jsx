@@ -9,7 +9,6 @@ import {
   Play,
   PlusCircle,
   RotateCcw,
-  Search,
   Trophy,
   Users,
   XCircle,
@@ -18,10 +17,51 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { loginTeacher } from "../api/auth";
 import { buildAssetUrl } from "../api/client";
-import { getRandomQuestion } from "../api/questionBank";
+import {
+  getQuestionBankDetail,
+  getRandomQuestion,
+} from "../api/questionBank";
 import { createAppSocket } from "../api/socket";
 
 const DEFAULT_QUESTION_BANK_ID = "37b64ed4-0e46-4a00-9ae2-92b707d9a4ce";
+const TEACHER_STORAGE_KEYS = [
+  "teacherAccessToken",
+  "teacherName",
+  "teacherUserId",
+];
+
+const clearTeacherStorage = () => {
+  TEACHER_STORAGE_KEYS.forEach((key) => {
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  });
+};
+
+const decodeJwtPayload = (token) => {
+  try {
+    const encodedPayload = token.split(".")[1];
+    if (!encodedPayload) return null;
+
+    const normalizedPayload = encodedPayload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      Math.ceil(normalizedPayload.length / 4) * 4,
+      "="
+    );
+
+    return JSON.parse(atob(paddedPayload));
+  } catch {
+    return null;
+  }
+};
+
+const isValidTeacherToken = (token) => {
+  const payload = decodeJwtPayload(token);
+  if (!payload || payload.userType !== "TEACHER") return false;
+
+  return !payload.exp || payload.exp * 1000 > Date.now();
+};
 
 const toArray = (value) => {
   if (!value) return [];
@@ -54,10 +94,19 @@ const createEmptyRoom = (roomId = "", questionBankId = "") => ({
   students: [],
 });
 
-const getInitialTeacher = () => ({
-  token: localStorage.getItem("teacherAccessToken") || "",
-  name: localStorage.getItem("teacherName") || "",
-});
+const getInitialTeacher = () => {
+  const token = sessionStorage.getItem("teacherAccessToken") || "";
+
+  if (!isValidTeacherToken(token)) {
+    clearTeacherStorage();
+    return { token: "", name: "" };
+  }
+
+  return {
+    token,
+    name: sessionStorage.getItem("teacherName") || "",
+  };
+};
 
 const TeacherGoldenBell = () => {
   const navigate = useNavigate();
@@ -69,10 +118,13 @@ const TeacherGoldenBell = () => {
   const [teacher, setTeacher] = useState(getInitialTeacher);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [roomInput, setRoomInput] = useState(questionBankId);
   const [room, setRoom] = useState(() =>
     createEmptyRoom(roomId, questionBankId)
   );
+  const [questionBankInfo, setQuestionBankInfo] = useState({
+    id: "",
+    name: "",
+  });
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
@@ -105,6 +157,10 @@ const TeacherGoldenBell = () => {
   }, [room.currentQuestion]);
 
   const isAuthenticated = Boolean(teacher.token);
+  const questionBankName =
+    questionBankInfo.id === questionBankId
+      ? questionBankInfo.name
+      : "Đang tải tên đề thi...";
 
   const syncRoom = useCallback(
     (nextRoom) => {
@@ -122,6 +178,33 @@ const TeacherGoldenBell = () => {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  useEffect(() => {
+    if (!teacher.token) return undefined;
+
+    let isCancelled = false;
+
+    getQuestionBankDetail(questionBankId, teacher.token)
+      .then((response) => {
+        if (isCancelled) return;
+        const payload = response?.data?.data || response?.data || response;
+        setQuestionBankInfo({
+          id: questionBankId,
+          name: payload?.name || payload?.code || "Đề thi chưa có tên",
+        });
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        setQuestionBankInfo({
+          id: questionBankId,
+          name: "Không tải được tên đề thi",
+        });
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [questionBankId, teacher.token]);
 
   useEffect(() => {
     if (!teacher.token) return;
@@ -145,10 +228,12 @@ const TeacherGoldenBell = () => {
 
     const handleDisconnect = () => {
       setSocketStatus("disconnected");
+      setIsCreatingRoom(false);
     };
 
     const handleConnectError = () => {
       setSocketStatus("disconnected");
+      setIsCreatingRoom(false);
     };
 
     const handleRoomState = (nextRoom) => {
@@ -188,11 +273,18 @@ const TeacherGoldenBell = () => {
     }
 
     setIsCreatingRoom(true);
-    socketRef.current.emit(
+    socketRef.current.timeout(8000).emit(
       "golden-bell:create-room",
       { questionBankId },
-      (response) => {
+      (error, response) => {
         setIsCreatingRoom(false);
+
+        if (error) {
+          toast.error(
+            "Socket tạo phòng không phản hồi. Vui lòng kiểm tra cấu hình máy chủ."
+          );
+          return;
+        }
 
         if (!response?.ok || !response.roomId) {
           toast.error(response?.message || "Không thể tạo phòng");
@@ -226,10 +318,14 @@ const TeacherGoldenBell = () => {
         throw new Error("Không nhận được token giáo viên");
       }
 
+      if (!isValidTeacherToken(accessToken)) {
+        throw new Error("Tài khoản không có quyền giáo viên");
+      }
+
       const name = payload?.fullName || payload?.userName || loginForm.username;
-      localStorage.setItem("teacherAccessToken", accessToken);
-      localStorage.setItem("teacherName", name);
-      localStorage.setItem("teacherUserId", payload?.userId || "");
+      sessionStorage.setItem("teacherAccessToken", accessToken);
+      sessionStorage.setItem("teacherName", name);
+      sessionStorage.setItem("teacherUserId", payload?.userId || "");
       setTeacher({ token: accessToken, name });
       toast.success("Đăng nhập giáo viên thành công");
     } catch (error) {
@@ -240,23 +336,9 @@ const TeacherGoldenBell = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("teacherAccessToken");
-    localStorage.removeItem("teacherName");
-    localStorage.removeItem("teacherUserId");
+    clearTeacherStorage();
     setTeacher({ token: "", name: "" });
     setRoom(createEmptyRoom("", questionBankId));
-  };
-
-  const handleChangeRoom = (event) => {
-    event.preventDefault();
-    const nextRoomId = roomInput.trim();
-
-    if (!nextRoomId) {
-      toast.error("Vui lòng nhập questionBankId");
-      return;
-    }
-
-    navigate(`/teacher/${nextRoomId}`);
   };
 
   const fetchQuestion = async ({ reset = false } = {}) => {
@@ -287,6 +369,9 @@ const TeacherGoldenBell = () => {
         questionBankId,
         currentQuestion: nextQuestion,
         questionNo: reset ? 1 : (currentRoom.questionNo || 0) + 1,
+        questionStartedAt: new Date().toISOString(),
+        questionDurationSeconds: 15,
+        questionEndedAt: null,
         usedQuestionIds: reset
           ? [nextQuestion.id]
           : [...currentUsedIds, nextQuestion.id],
@@ -450,25 +535,24 @@ const TeacherGoldenBell = () => {
                     : "Mất kết nối"}
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Bảng điều khiển giáo viên</h1>
+            <h1 className="mt-1 text-2xl font-bold text-gray-900">
+              Xin chào Thầy/Cô {teacher.name}
+            </h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Cảm ơn Thầy/Cô đã đồng hành cùng cuộc thi Rung chuông vàng!
+            </p>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <form onSubmit={handleChangeRoom} className="flex gap-2">
-              <input
-                value={roomInput}
-                onChange={(event) => setRoomInput(event.target.value)}
-                className="w-72 max-w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                placeholder="questionBankId"
-              />
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 font-semibold text-gray-700 hover:bg-white"
-              >
-                <Search size={16} />
-                Xem
-              </button>
-            </form>
+            <div
+              className="min-w-72 max-w-full rounded-lg border border-yellow-300 bg-white px-4 py-2"
+              title={`Question bank: ${questionBankId}`}
+            >
+              <p className="text-xs font-medium text-gray-500">Đề thi</p>
+              <p className="max-w-80 truncate font-semibold text-gray-900">
+                {questionBankName}
+              </p>
+            </div>
             <button
               type="button"
               onClick={handleCreateRoom}
