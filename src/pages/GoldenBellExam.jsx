@@ -13,8 +13,6 @@ import { toast } from "react-hot-toast";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
 
-const DEFAULT_QUESTION_BANK_ID = "37b64ed4-0e46-4a00-9ae2-92b707d9a4ce";
-
 const toArray = (value) => {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
@@ -58,7 +56,7 @@ const getDefaultStudentName = () => {
   }
 };
 
-const getInitialRoom = (roomKey, questionBankId) => {
+const getInitialRoom = (roomKey, roomId) => {
   try {
     const saved = localStorage.getItem(roomKey);
     if (saved) return JSON.parse(saved);
@@ -67,7 +65,8 @@ const getInitialRoom = (roomKey, questionBankId) => {
   }
 
   return {
-    code: questionBankId.slice(0, 6).toUpperCase(),
+    roomId,
+    code: roomId,
     currentQuestion: null,
     questionNo: 0,
     usedQuestionIds: [],
@@ -75,20 +74,69 @@ const getInitialRoom = (roomKey, questionBankId) => {
   };
 };
 
-const GoldenBellExam = () => {
+const GoldenBellLobby = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const questionBankId = id || DEFAULT_QUESTION_BANK_ID;
-  const roomId = questionBankId;
-  const roomKey = `golden_bell_room_${questionBankId}`;
+  const [roomCode, setRoomCode] = useState("");
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const normalizedCode = roomCode.trim();
+
+    if (!/^\d{6}$/.test(normalizedCode)) {
+      toast.error("Mã phòng gồm 6 chữ số");
+      return;
+    }
+
+    navigate(`/golden-bell/${normalizedCode}`);
+  };
+
+  return (
+    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-gradient-to-b from-green-50 via-gray-100 to-white px-4">
+      <div className="w-full max-w-md rounded-2xl border border-green-200 bg-white p-6 text-center shadow-lg md:p-8">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 text-yellow-700">
+          <Bell size={32} />
+        </div>
+        <h1 className="text-3xl font-black text-gray-900">Rung chuông vàng</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Nhập mã phòng giáo viên đang hiển thị để vào sân thi đấu.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+          <input
+            value={roomCode}
+            onChange={(event) =>
+              setRoomCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            placeholder="Nhập mã 6 chữ số"
+            className="w-full rounded-xl border-2 border-green-200 px-4 py-4 text-center text-3xl font-black tracking-[0.35em] text-gray-900 outline-none transition focus:border-green-600 focus:ring-4 focus:ring-green-100"
+          />
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-green-700 px-5 py-3 font-bold text-white hover:bg-green-800"
+          >
+            Tham gia phòng
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const GoldenBellRoom = ({ roomId }) => {
+  const navigate = useNavigate();
+  const roomKey = `golden_bell_room_${roomId}`;
 
   const [question, setQuestion] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [questionNo, setQuestionNo] = useState(0);
   const [studentId] = useState(createStudentId);
   const [studentName, setStudentName] = useState(getDefaultStudentName);
-  const [room, setRoom] = useState(() => getInitialRoom(roomKey, questionBankId));
+  const [room, setRoom] = useState(() => getInitialRoom(roomKey, roomId));
   const [socketStatus, setSocketStatus] = useState("connecting");
+  const [roomError, setRoomError] = useState("");
 
   const socketRef = useRef(null);
   const roomRef = useRef(room);
@@ -140,10 +188,10 @@ const GoldenBellExam = () => {
   );
 
   useEffect(() => {
-    const nextRoom = getInitialRoom(roomKey, questionBankId);
+    const nextRoom = getInitialRoom(roomKey, roomId);
     roomRef.current = nextRoom;
     setRoom(nextRoom);
-  }, [questionBankId, roomKey]);
+  }, [roomId, roomKey]);
 
   useEffect(() => {
     const handleStorage = (event) => {
@@ -169,9 +217,12 @@ const GoldenBellExam = () => {
 
     const handleConnect = () => {
       setSocketStatus("connected");
-      socket.emit("golden-bell:join", {
-        roomId,
-        initialRoom: roomRef.current,
+      socket.emit("golden-bell:join", { roomId }, (response) => {
+        if (response?.ok === false) {
+          setRoomError("Không tìm thấy phòng hoặc phòng đã kết thúc.");
+        } else {
+          setRoomError("");
+        }
       });
     };
 
@@ -229,7 +280,7 @@ const GoldenBellExam = () => {
     } else {
       lastQuestionIdRef.current = null;
     }
-  }, [questionBankId]);
+  }, [roomId]);
 
   const updateCurrentStudent = useCallback(
     (updater) => {
@@ -280,13 +331,20 @@ const GoldenBellExam = () => {
         ];
 
     const nextRoom = { ...room, students: nextStudents };
-    saveRoom(nextRoom);
+    saveRoom(nextRoom, { emitSocket: false });
 
-    socketRef.current?.emit("golden-bell:join", {
-      roomId,
-      student: nextStudents.find((student) => student.id === studentId),
-      initialRoom: nextRoom,
-    });
+    socketRef.current?.emit(
+      "golden-bell:join",
+      {
+        roomId,
+        student: nextStudents.find((student) => student.id === studentId),
+      },
+      (response) => {
+        if (response?.ok === false) {
+          setRoomError("Không thể tham gia phòng này.");
+        }
+      }
+    );
   };
 
   const handleSelectAnswer = (answer) => {
@@ -350,6 +408,25 @@ const GoldenBellExam = () => {
       return null;
     });
   };
+
+  if (roomError) {
+    return (
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-gray-100 px-4">
+        <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-7 text-center shadow-sm">
+          <XCircle className="mx-auto mb-3 text-red-500" size={44} />
+          <h1 className="text-xl font-bold text-gray-900">Không vào được phòng</h1>
+          <p className="mt-2 text-sm text-gray-600">{roomError}</p>
+          <button
+            type="button"
+            onClick={() => navigate("/golden-bell", { replace: true })}
+            className="mt-5 rounded-lg bg-green-700 px-5 py-2.5 font-bold text-white hover:bg-green-800"
+          >
+            Nhập mã phòng khác
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-green-50 via-gray-100 to-white">
@@ -587,6 +664,13 @@ const GoldenBellExam = () => {
       </div>
     </div>
   );
+};
+
+const GoldenBellExam = () => {
+  const { id } = useParams();
+  const roomId = (id || "").trim().toUpperCase();
+
+  return roomId ? <GoldenBellRoom roomId={roomId} /> : <GoldenBellLobby />;
 };
 
 export default GoldenBellExam;

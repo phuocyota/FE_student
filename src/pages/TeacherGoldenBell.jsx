@@ -7,13 +7,14 @@ import {
   Loader2,
   LogOut,
   Play,
+  PlusCircle,
   RotateCcw,
   Search,
   Trophy,
   Users,
   XCircle,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { loginTeacher } from "../api/auth";
 import { buildAssetUrl } from "../api/client";
@@ -43,8 +44,10 @@ const buildContentChain = (node) => {
   ];
 };
 
-const createEmptyRoom = (roomId) => ({
-  code: roomId.slice(0, 6).toUpperCase(),
+const createEmptyRoom = (roomId = "", questionBankId = "") => ({
+  roomId,
+  code: roomId,
+  questionBankId,
   currentQuestion: null,
   questionNo: 0,
   usedQuestionIds: [],
@@ -59,14 +62,19 @@ const getInitialTeacher = () => ({
 const TeacherGoldenBell = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const roomId = id || DEFAULT_QUESTION_BANK_ID;
+  const [searchParams] = useSearchParams();
+  const questionBankId = id || DEFAULT_QUESTION_BANK_ID;
+  const roomId = (searchParams.get("room") || "").trim().toUpperCase();
 
   const [teacher, setTeacher] = useState(getInitialTeacher);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [roomInput, setRoomInput] = useState(roomId);
-  const [room, setRoom] = useState(() => createEmptyRoom(roomId));
+  const [roomInput, setRoomInput] = useState(questionBankId);
+  const [room, setRoom] = useState(() =>
+    createEmptyRoom(roomId, questionBankId)
+  );
   const [socketStatus, setSocketStatus] = useState("connecting");
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isOutOfQuestions, setIsOutOfQuestions] = useState(false);
 
@@ -102,6 +110,7 @@ const TeacherGoldenBell = () => {
     (nextRoom) => {
       roomRef.current = nextRoom;
       setRoom(nextRoom);
+      if (!roomId) return;
       socketRef.current?.emit("golden-bell:sync", {
         roomId,
         room: nextRoom,
@@ -122,9 +131,15 @@ const TeacherGoldenBell = () => {
 
     const handleConnect = () => {
       setSocketStatus("connected");
+      if (!roomId) return;
+
       socket.emit("golden-bell:join", {
         roomId,
-        initialRoom: roomRef.current || createEmptyRoom(roomId),
+      }, (response) => {
+        if (response?.ok === false) {
+          toast.error("Phòng không tồn tại hoặc đã kết thúc");
+          navigate(`/teacher/${questionBankId}`, { replace: true });
+        }
       });
     };
 
@@ -140,7 +155,7 @@ const TeacherGoldenBell = () => {
       if (!nextRoom) return;
 
       const normalizedRoom = {
-        ...createEmptyRoom(roomId),
+        ...createEmptyRoom(roomId, questionBankId),
         ...nextRoom,
         students: toArray(nextRoom.students),
         usedQuestionIds: toArray(nextRoom.usedQuestionIds),
@@ -156,7 +171,7 @@ const TeacherGoldenBell = () => {
     socket.on("golden-bell:room-state", handleRoomState);
 
     return () => {
-      socket.emit("golden-bell:leave", { roomId });
+      if (roomId) socket.emit("golden-bell:leave", { roomId });
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
       socket.off("connect_error", handleConnectError);
@@ -164,7 +179,35 @@ const TeacherGoldenBell = () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, teacher.token]);
+  }, [navigate, questionBankId, roomId, teacher.token]);
+
+  const handleCreateRoom = () => {
+    if (!socketRef.current?.connected) {
+      toast.error("Socket chưa kết nối, vui lòng thử lại");
+      return;
+    }
+
+    setIsCreatingRoom(true);
+    socketRef.current.emit(
+      "golden-bell:create-room",
+      { questionBankId },
+      (response) => {
+        setIsCreatingRoom(false);
+
+        if (!response?.ok || !response.roomId) {
+          toast.error(response?.message || "Không thể tạo phòng");
+          return;
+        }
+
+        roomRef.current = response.room;
+        setRoom(response.room);
+        navigate(`/teacher/${questionBankId}?room=${response.roomId}`, {
+          replace: true,
+        });
+        toast.success(`Đã tạo phòng ${response.roomId}`);
+      }
+    );
+  };
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -201,7 +244,7 @@ const TeacherGoldenBell = () => {
     localStorage.removeItem("teacherName");
     localStorage.removeItem("teacherUserId");
     setTeacher({ token: "", name: "" });
-    setRoom(createEmptyRoom(roomId));
+    setRoom(createEmptyRoom("", questionBankId));
   };
 
   const handleChangeRoom = (event) => {
@@ -209,7 +252,7 @@ const TeacherGoldenBell = () => {
     const nextRoomId = roomInput.trim();
 
     if (!nextRoomId) {
-      toast.error("Vui lòng nhập questionBankId hoặc mã phòng");
+      toast.error("Vui lòng nhập questionBankId");
       return;
     }
 
@@ -221,10 +264,16 @@ const TeacherGoldenBell = () => {
     setIsOutOfQuestions(false);
 
     try {
-      const currentRoom = roomRef.current || createEmptyRoom(roomId);
+      if (!roomId) {
+        toast.error("Vui lòng tạo phòng trước khi phát câu hỏi");
+        return;
+      }
+
+      const currentRoom =
+        roomRef.current || createEmptyRoom(roomId, questionBankId);
       const currentUsedIds = toArray(currentRoom.usedQuestionIds);
       const excludedIds = reset ? [] : currentUsedIds;
-      const response = await getRandomQuestion(roomId, excludedIds);
+      const response = await getRandomQuestion(questionBankId, excludedIds);
       const nextQuestion = response?.data || response;
 
       if (!nextQuestion?.id) {
@@ -233,7 +282,9 @@ const TeacherGoldenBell = () => {
 
       const nextRoom = {
         ...currentRoom,
-        code: currentRoom.code || roomId.slice(0, 6).toUpperCase(),
+        roomId,
+        code: currentRoom.code || roomId,
+        questionBankId,
         currentQuestion: nextQuestion,
         questionNo: reset ? 1 : (currentRoom.questionNo || 0) + 1,
         usedQuestionIds: reset
@@ -263,7 +314,7 @@ const TeacherGoldenBell = () => {
 
   const handleResetRoom = () => {
     syncRoom({
-      ...createEmptyRoom(roomId),
+      ...createEmptyRoom(roomId, questionBankId),
       students: students.map((student) => ({
         ...student,
         status: "active",
@@ -277,11 +328,13 @@ const TeacherGoldenBell = () => {
   };
 
   const handleCopyStudentLink = async () => {
+    if (!roomId) return;
     await navigator.clipboard.writeText(`${window.location.origin}/golden-bell/${roomId}`);
     toast.success("Đã copy link học sinh");
   };
 
   const handleOpenArena = () => {
+    if (!roomId) return;
     window.open(`/golden-bell-arena/${roomId}`, "_blank", "noopener,noreferrer");
   };
   const renderContent = (chain, emptyMessage = "Chưa có nội dung.") => {
@@ -406,7 +459,7 @@ const TeacherGoldenBell = () => {
                 value={roomInput}
                 onChange={(event) => setRoomInput(event.target.value)}
                 className="w-72 max-w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                placeholder="questionBankId / roomId"
+                placeholder="questionBankId"
               />
               <button
                 type="submit"
@@ -418,6 +471,19 @@ const TeacherGoldenBell = () => {
             </form>
             <button
               type="button"
+              onClick={handleCreateRoom}
+              disabled={isCreatingRoom || socketStatus !== "connected"}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-600 px-4 py-2 font-semibold text-white hover:bg-yellow-700 disabled:opacity-60"
+            >
+              {isCreatingRoom ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <PlusCircle size={16} />
+              )}
+              {roomId ? "Tạo phòng khác" : "Tạo phòng mới"}
+            </button>
+            <button
+              type="button"
               onClick={handleLogout}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 font-semibold text-gray-700 hover:bg-white"
             >
@@ -427,10 +493,22 @@ const TeacherGoldenBell = () => {
           </div>
         </div>
 
+        {!roomId && (
+          <div className="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 p-6 text-center">
+            <Bell className="mx-auto mb-3 text-yellow-600" size={36} />
+            <h2 className="text-xl font-bold text-gray-900">Chưa mở phòng thi đấu</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Bấm “Tạo phòng mới” để nhận mã ngẫu nhiên cho học sinh tham gia.
+            </p>
+          </div>
+        )}
+
         <div className="mb-4 grid gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <p className="text-sm text-gray-500">Mã phòng</p>
-            <p className="mt-1 text-2xl font-bold tracking-wider text-gray-900">{room.code}</p>
+            <p className="mt-1 text-2xl font-bold tracking-wider text-gray-900">
+              {room.code || "------"}
+            </p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <p className="text-sm text-gray-500">Đã join</p>
@@ -458,6 +536,7 @@ const TeacherGoldenBell = () => {
                   <button
                     type="button"
                     onClick={handleCopyStudentLink}
+                    disabled={!roomId}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     <Copy size={16} />
@@ -466,6 +545,7 @@ const TeacherGoldenBell = () => {
                   <button
                     type="button"
                     onClick={handleOpenArena}
+                    disabled={!roomId}
                     className="inline-flex items-center gap-2 rounded-lg border border-blue-300 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
                   >
                     <ExternalLink size={16} />
@@ -474,6 +554,7 @@ const TeacherGoldenBell = () => {
                   <button
                     type="button"
                     onClick={handleResetRoom}
+                    disabled={!roomId}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     <RotateCcw size={16} />
@@ -481,7 +562,7 @@ const TeacherGoldenBell = () => {
                   </button>
                   <button
                     type="button"
-                    disabled={isLoadingQuestion}
+                    disabled={!roomId || isLoadingQuestion}
                     onClick={() => fetchQuestion()}
                     className="inline-flex items-center gap-2 rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700 disabled:opacity-60"
                   >

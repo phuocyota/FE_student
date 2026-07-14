@@ -4,7 +4,6 @@ import { useParams } from "react-router-dom";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
 
-const DEFAULT_QUESTION_BANK_ID = "37b64ed4-0e46-4a00-9ae2-92b707d9a4ce";
 const TOTAL_SEATS = 50;
 const QUESTION_SECONDS = 15;
 
@@ -30,7 +29,8 @@ const buildContentChain = (node) => {
 };
 
 const createEmptyRoom = (roomId) => ({
-  code: roomId.slice(0, 6).toUpperCase(),
+  roomId,
+  code: roomId,
   currentQuestion: null,
   questionNo: 0,
   usedQuestionIds: [],
@@ -56,9 +56,10 @@ const getSeatColor = (index) => {
 
 const GoldenBellArena = () => {
   const { id } = useParams();
-  const roomId = id || DEFAULT_QUESTION_BANK_ID;
+  const roomId = (id || "").trim().toUpperCase();
   const [room, setRoom] = useState(() => createEmptyRoom(roomId));
   const [socketStatus, setSocketStatus] = useState("connecting");
+  const [roomError, setRoomError] = useState("");
   const [remainingSeconds, setRemainingSeconds] = useState(QUESTION_SECONDS);
   const socketRef = useRef(null);
   const lastQuestionIdRef = useRef(null);
@@ -97,9 +98,17 @@ const GoldenBellArena = () => {
 
     const handleConnect = () => {
       setSocketStatus("connected");
-      socket.emit("golden-bell:join", {
-        roomId,
-        initialRoom: createEmptyRoom(roomId),
+      if (!roomId) {
+        setRoomError("Thiếu mã phòng thi đấu.");
+        return;
+      }
+
+      socket.emit("golden-bell:join", { roomId }, (response) => {
+        if (response?.ok === false) {
+          setRoomError("Không tìm thấy phòng hoặc phòng đã kết thúc.");
+        } else {
+          setRoomError("");
+        }
       });
     };
 
@@ -109,6 +118,7 @@ const GoldenBellArena = () => {
 
     const handleRoomState = (nextRoom) => {
       if (!nextRoom) return;
+      setRoomError("");
 
       const normalizedRoom = {
         ...createEmptyRoom(roomId),
@@ -134,7 +144,7 @@ const GoldenBellArena = () => {
     socket.on("golden-bell:room-state", handleRoomState);
 
     return () => {
-      socket.emit("golden-bell:leave", { roomId });
+      if (roomId) socket.emit("golden-bell:leave", { roomId });
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
       socket.off("connect_error", handleDisconnect);
@@ -266,9 +276,13 @@ const GoldenBellArena = () => {
             ) : (
               <div className="flex min-h-64 flex-col items-center justify-center text-center">
                 <Bell className="mb-4 text-yellow-500" size={52} />
-                <p className="text-2xl font-black">Cho giao vien phat cau hoi</p>
+                <p className="text-2xl font-black">
+                  {roomError || "Chờ giáo viên phát câu hỏi"}
+                </p>
                 <p className="mt-2 text-gray-500">
-                  Man hinh san thi dau se cap nhat realtime theo phong {room.code}.
+                  {roomError
+                    ? "Vui lòng mở lại sân thi đấu từ bảng điều khiển giáo viên."
+                    : `Màn hình sẽ cập nhật realtime theo phòng ${room.code}.`}
                 </p>
               </div>
             )}
