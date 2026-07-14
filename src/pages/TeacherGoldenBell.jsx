@@ -127,6 +127,7 @@ const TeacherGoldenBell = () => {
   });
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isEndingRoom, setIsEndingRoom] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isOutOfQuestions, setIsOutOfQuestions] = useState(false);
 
@@ -238,6 +239,15 @@ const TeacherGoldenBell = () => {
 
     const handleRoomState = (nextRoom) => {
       if (!nextRoom) return;
+
+      if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
+        setRoom(createEmptyRoom("", questionBankId));
+        navigate(`/teacher/${questionBankId}`, { replace: true });
+        if (nextRoom.status === "EXPIRED") {
+          toast.error("Phòng đã hết hạn sau 24 giờ");
+        }
+        return;
+      }
 
       const normalizedRoom = {
         ...createEmptyRoom(roomId, questionBankId),
@@ -410,6 +420,33 @@ const TeacherGoldenBell = () => {
     });
     setIsOutOfQuestions(false);
     toast.success("Đã reset phòng");
+  };
+
+  const handleEndRoom = () => {
+    if (!roomId || !socketRef.current?.connected) return;
+
+    const shouldEndRoom = window.confirm(
+      `Kết thúc phòng ${roomId}? Học sinh sẽ không thể tiếp tục tham gia hoặc trả lời.`
+    );
+    if (!shouldEndRoom) return;
+
+    setIsEndingRoom(true);
+    socketRef.current.timeout(8000).emit(
+      "golden-bell:end-room",
+      { roomId },
+      (error, response) => {
+        setIsEndingRoom(false);
+
+        if (error || !response?.ok) {
+          toast.error(response?.message || "Không thể kết thúc phòng");
+          return;
+        }
+
+        setRoom(createEmptyRoom("", questionBankId));
+        navigate(`/teacher/${questionBankId}`, { replace: true });
+        toast.success(`Đã kết thúc phòng ${roomId}`);
+      }
+    );
   };
 
   const handleCopyStudentLink = async () => {
@@ -643,6 +680,19 @@ const TeacherGoldenBell = () => {
                   >
                     <RotateCcw size={16} />
                     Reset phòng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEndRoom}
+                    disabled={!roomId || isEndingRoom}
+                    className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    {isEndingRoom ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <XCircle size={16} />
+                    )}
+                    Kết thúc phòng
                   </button>
                   <button
                     type="button"

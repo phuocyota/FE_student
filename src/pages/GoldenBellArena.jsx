@@ -125,6 +125,20 @@ const GoldenBellArena = () => {
 
     const handleRoomState = (nextRoom) => {
       if (!nextRoom) return;
+
+      if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
+        setRoomError(
+          nextRoom.status === "EXPIRED"
+            ? "Phòng đã hết hạn sau 24 giờ."
+            : "Giáo viên đã kết thúc phòng thi đấu."
+        );
+        setRoom({
+          ...createEmptyRoom(roomId),
+          status: nextRoom.status,
+        });
+        return;
+      }
+
       setRoomError("");
 
       const normalizedRoom = {

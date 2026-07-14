@@ -279,6 +279,15 @@ const GoldenBellRoom = ({ roomId }) => {
     const handleRoomState = (nextRoom) => {
       if (!nextRoom?.students) return;
 
+      if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
+        setRoomError(
+          nextRoom.status === "EXPIRED"
+            ? "Phòng đã hết hạn sau 24 giờ."
+            : "Giáo viên đã kết thúc phòng thi đấu."
+        );
+        return;
+      }
+
       roomRef.current = nextRoom;
       setRoom(nextRoom);
       setRemainingSeconds(getRemainingSeconds(nextRoom));
