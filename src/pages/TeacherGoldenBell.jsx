@@ -1,7 +1,9 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
+  Check,
   CheckCircle2,
+  ChevronDown,
   Copy,
   ExternalLink,
   Loader2,
@@ -9,6 +11,7 @@ import {
   Play,
   PlusCircle,
   RotateCcw,
+  Search,
   Trophy,
   Users,
   XCircle,
@@ -19,6 +22,7 @@ import { loginTeacher } from "../api/auth";
 import { buildAssetUrl } from "../api/client";
 import {
   getQuestionBankDetail,
+  getQuestionBankOptions,
   getRandomQuestion,
 } from "../api/questionBank";
 import { createAppSocket } from "../api/socket";
@@ -125,6 +129,10 @@ const TeacherGoldenBell = () => {
     id: "",
     name: "",
   });
+  const [questionBankOptions, setQuestionBankOptions] = useState([]);
+  const [isQuestionBankMenuOpen, setIsQuestionBankMenuOpen] = useState(false);
+  const [isLoadingQuestionBanks, setIsLoadingQuestionBanks] = useState(false);
+  const [questionBankSearch, setQuestionBankSearch] = useState("");
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isEndingRoom, setIsEndingRoom] = useState(false);
@@ -133,6 +141,7 @@ const TeacherGoldenBell = () => {
 
   const socketRef = useRef(null);
   const roomRef = useRef(room);
+  const questionBankMenuRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
   const activeStudents = students.filter((student) => student.status === "active");
@@ -162,6 +171,21 @@ const TeacherGoldenBell = () => {
     questionBankInfo.id === questionBankId
       ? questionBankInfo.name
       : "Đang tải tên đề thi...";
+  const filteredQuestionBankOptions = useMemo(() => {
+    const keyword = questionBankSearch.trim().toLocaleLowerCase("vi");
+    if (!keyword) return questionBankOptions;
+
+    return questionBankOptions.filter((option) =>
+      [
+        option.name,
+        option.examSetName,
+        option.gradeName,
+        option.subjectName,
+      ]
+        .filter(Boolean)
+        .some((value) => value.toLocaleLowerCase("vi").includes(keyword))
+    );
+  }, [questionBankOptions, questionBankSearch]);
 
   const syncRoom = useCallback(
     (nextRoom) => {
@@ -191,7 +215,11 @@ const TeacherGoldenBell = () => {
         const payload = response?.data?.data || response?.data || response;
         setQuestionBankInfo({
           id: questionBankId,
-          name: payload?.name || payload?.code || "Đề thi chưa có tên",
+          name:
+            payload?.title ||
+            payload?.name ||
+            payload?.code ||
+            "Đề thi chưa có tên",
         });
       })
       .catch(() => {
@@ -206,6 +234,93 @@ const TeacherGoldenBell = () => {
       isCancelled = true;
     };
   }, [questionBankId, teacher.token]);
+
+  useEffect(() => {
+    if (!isQuestionBankMenuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!questionBankMenuRef.current?.contains(event.target)) {
+        setIsQuestionBankMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsQuestionBankMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isQuestionBankMenuOpen]);
+
+  const loadQuestionBankOptions = useCallback(async () => {
+    if (questionBankOptions.length || isLoadingQuestionBanks) return;
+
+    setIsLoadingQuestionBanks(true);
+
+    try {
+      const options = await getQuestionBankOptions(teacher.token);
+      const includesCurrentQuestionBank = options.some(
+        (option) => option.id === questionBankId
+      );
+
+      setQuestionBankOptions(
+        includesCurrentQuestionBank
+          ? options
+          : [
+              {
+                id: questionBankId,
+                name: questionBankName,
+                examSetName: "Đề thi hiện tại",
+                gradeName: "",
+                subjectName: "",
+              },
+              ...options,
+            ]
+      );
+    } catch (error) {
+      toast.error(error.message || "Không thể tải danh sách đề thi");
+    } finally {
+      setIsLoadingQuestionBanks(false);
+    }
+  }, [
+    isLoadingQuestionBanks,
+    questionBankId,
+    questionBankName,
+    questionBankOptions.length,
+    teacher.token,
+  ]);
+
+  const handleToggleQuestionBankMenu = () => {
+    setIsQuestionBankMenuOpen((isOpen) => {
+      const nextIsOpen = !isOpen;
+      if (nextIsOpen) void loadQuestionBankOptions();
+      return nextIsOpen;
+    });
+  };
+
+  const handleSelectQuestionBank = (option) => {
+    if (option.id === questionBankId) {
+      setIsQuestionBankMenuOpen(false);
+      return;
+    }
+
+    if (roomId) {
+      toast.error("Vui lòng kết thúc phòng hiện tại trước khi đổi đề thi");
+      return;
+    }
+
+    setQuestionBankInfo({ id: option.id, name: option.name });
+    setIsQuestionBankMenuOpen(false);
+    setQuestionBankSearch("");
+    navigate(`/teacher/${option.id}`);
+  };
 
   useEffect(() => {
     if (!teacher.token) return;
@@ -494,7 +609,7 @@ const TeacherGoldenBell = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-gray-100 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
         <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-6 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 text-yellow-700">
@@ -549,7 +664,7 @@ const TeacherGoldenBell = () => {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gray-100">
+    <div className="min-h-screen bg-gray-100">
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -581,14 +696,106 @@ const TeacherGoldenBell = () => {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div
-              className="min-w-72 max-w-full rounded-lg border border-yellow-300 bg-white px-4 py-2"
-              title={`Question bank: ${questionBankId}`}
-            >
-              <p className="text-xs font-medium text-gray-500">Đề thi</p>
-              <p className="max-w-80 truncate font-semibold text-gray-900">
-                {questionBankName}
-              </p>
+            <div ref={questionBankMenuRef} className="relative min-w-72 max-w-full">
+              <button
+                type="button"
+                onClick={handleToggleQuestionBankMenu}
+                aria-expanded={isQuestionBankMenuOpen}
+                aria-haspopup="listbox"
+                className={`flex w-full items-center justify-between gap-3 rounded-lg border bg-white px-4 py-2 text-left transition hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
+                  isQuestionBankMenuOpen
+                    ? "border-yellow-500 ring-2 ring-yellow-100"
+                    : "border-yellow-300"
+                }`}
+                title={`Question bank: ${questionBankId}`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium text-gray-500">Đề thi</span>
+                  <span className="block max-w-72 truncate font-semibold text-gray-900">
+                    {questionBankName}
+                  </span>
+                </span>
+                <ChevronDown
+                  size={18}
+                  className={`shrink-0 text-yellow-700 transition-transform ${
+                    isQuestionBankMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {isQuestionBankMenuOpen && (
+                <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:right-auto sm:w-[420px]">
+                  <div className="border-b border-gray-100 p-3">
+                    <p className="mb-2 text-sm font-semibold text-gray-900">
+                      Chọn đề thi
+                    </p>
+                    <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 focus-within:border-yellow-400 focus-within:ring-2 focus-within:ring-yellow-100">
+                      <Search size={16} className="shrink-0 text-gray-400" />
+                      <input
+                        autoFocus
+                        value={questionBankSearch}
+                        onChange={(event) => setQuestionBankSearch(event.target.value)}
+                        placeholder="Tìm theo tên đề, môn hoặc khối..."
+                        className="w-full bg-transparent py-2 text-sm outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto p-2" role="listbox">
+                    {isLoadingQuestionBanks ? (
+                      <div className="flex items-center justify-center gap-2 py-8 text-sm text-gray-500">
+                        <Loader2 className="animate-spin" size={18} />
+                        Đang tải danh sách đề thi...
+                      </div>
+                    ) : filteredQuestionBankOptions.length === 0 ? (
+                      <p className="py-8 text-center text-sm text-gray-500">
+                        {questionBankOptions.length
+                          ? "Không tìm thấy đề thi phù hợp"
+                          : "Chưa có đề thi để lựa chọn"}
+                      </p>
+                    ) : (
+                      filteredQuestionBankOptions.map((option) => {
+                        const isSelected = option.id === questionBankId;
+
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => handleSelectQuestionBank(option)}
+                            className={`mb-1 flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition last:mb-0 ${
+                              isSelected
+                                ? "bg-yellow-50 text-yellow-900"
+                                : "text-gray-900 hover:bg-gray-50"
+                            }`}
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold">
+                                {option.name}
+                              </span>
+                              <span className="mt-0.5 block truncate text-xs text-gray-500">
+                                {[option.gradeName, option.subjectName, option.examSetName]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            </span>
+                            {isSelected && (
+                              <Check size={17} className="mt-0.5 shrink-0 text-yellow-700" />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {roomId && (
+                    <p className="border-t border-yellow-100 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                      Kết thúc phòng hiện tại trước khi đổi đề thi.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <button
               type="button"

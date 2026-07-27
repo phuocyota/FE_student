@@ -11,6 +11,7 @@ const ExamDetail = () => {
   const { examSetId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isAuthenticated = Boolean(localStorage.getItem("accessToken"));
   // console.log("🔥 SUBJECT:", location.state);
   const subjectName = location.state?.subject?.name;
   // console.log("🔥 SUBJECT NAME:", location.state?.subject?.name);
@@ -87,6 +88,13 @@ const ExamDetail = () => {
   const handleStartExam = async (qb) => {
     if (isStarting) return; // ❌ chặn bấm nhiều lần
 
+    if (!localStorage.getItem("accessToken")) {
+      navigate("/login", {
+        state: { from: `${location.pathname}${location.search}` },
+      });
+      return;
+    }
+
     setIsStarting(true);
 
     try {
@@ -123,6 +131,12 @@ const ExamDetail = () => {
   useEffect(() => {
     if (!exam?.id) return;
 
+    if (!isAuthenticated) {
+      setHistory([]);
+      setLoading(false);
+      return;
+    }
+
     const fetchHistory = async () => {
       try {
         const res = await getAttemptList({
@@ -154,7 +168,7 @@ const ExamDetail = () => {
 
     fetchHistory();
 
-  }, [exam?.id, examSetId]);
+  }, [exam?.id, examSetId, isAuthenticated]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -264,16 +278,20 @@ const ExamDetail = () => {
 
           {/* ================= LIST QUESTION ================= */}
           <div className="space-y-4">
-            <h2 className="font-semibold text-lg">Danh sách đề</h2>
+            <h2 className="text-lg font-semibold leading-7 text-gray-900">
+              Danh sách đề
+            </h2>
 
             {questionBanks.map((qb) => (
               <div
                 key={qb.id}
-                className="border border-gray-400 p-4 rounded-lg flex justify-between items-center"
+                className="flex items-center justify-between gap-4 rounded-lg border border-gray-400 p-4"
               >
-                <div>
-                  <h3>{qb.title}</h3>
-                  <p className="text-sm text-gray-500">
+                <div className="min-w-0">
+                  <h3 className="text-base font-medium leading-6 text-gray-900">
+                    {qb.title}
+                  </h3>
+                  <p className="mt-0.5 text-sm leading-5 text-gray-500">
                     ⏱ {qb.durationSeconds
                       ? `${qb.durationSeconds / 60} phút`
                       : "Không rõ"}
@@ -283,7 +301,7 @@ const ExamDetail = () => {
                 <button
                   onClick={() => handleStartExam(qb)}
                   disabled={isStarting}
-                  className="bg-green-600 text-white px-4 py-2 rounded cursor-pointer hover:bg-green-700 transition"
+                  className="shrink-0 cursor-pointer rounded bg-green-600 px-4 py-2 text-sm font-semibold leading-5 text-white transition hover:bg-green-700"
                 >
                   {isStarting ? "Đang vào bài..." : "Làm bài"}
                 </button>
@@ -439,51 +457,53 @@ const ExamDetail = () => {
             </div>
           )}
 
-          {/* ================= RANKING ================= */}
-          <div className="mt-12 px-3">
-            <h2 className="text-2xl font-bold mb-6 text-center">
-              BẢNG XẾP HẠNG
-            </h2>
+          {/* Chỉ hiển thị xếp hạng khi API attempt được phép gọi */}
+          {isAuthenticated && (
+            <div className="mt-12 px-3">
+              <h2 className="text-2xl font-bold mb-6 text-center">
+                BẢNG XẾP HẠNG
+              </h2>
 
-            <div className="w-full md:w-2/3 mx-auto bg-gray-100 rounded-3xl p-6">
+              <div className="w-full md:w-2/3 mx-auto bg-gray-100 rounded-3xl p-6">
 
-              <h3 className="text-center text-gray-600 mb-6">
-                Top thành viên điểm cao
-              </h3>
+                <h3 className="text-center text-gray-600 mb-6">
+                  Top thành viên điểm cao
+                </h3>
 
-              {/* TOP 3 */}
-              <div className="flex justify-center gap-10 mb-8">
+                {/* TOP 3 */}
+                <div className="flex justify-center gap-10 mb-8">
 
-                {[2, 1, 3].map((rank) => (
-                  <div key={rank} className="text-center">
-                    <img
-                      src={avatar}
-                      className={`rounded-full mx-auto ${rank === 1 ? "w-16 h-16 border-4 border-yellow-400" : "w-12 h-12"
-                        }`}
-                    />
-                    <p className="mt-2 text-sm">User {rank}</p>
-                    <p className="text-red-600 font-semibold">10 điểm</p>
-                  </div>
-                ))}
-
-              </div>
-
-              {/* LIST */}
-              <div className="space-y-3">
-                {[4, 5, 6, 7, 8].map((rank) => (
-                  <div key={rank} className="flex justify-between bg-white p-3 rounded-xl">
-                    <div className="flex gap-3 items-center">
-                      <span>{rank}</span>
-                      <img src={avatar} className="w-8 h-8 rounded-full" />
-                      <span>User {rank}</span>
+                  {[2, 1, 3].map((rank) => (
+                    <div key={rank} className="text-center">
+                      <img
+                        src={avatar}
+                        className={`rounded-full mx-auto ${rank === 1 ? "w-16 h-16 border-4 border-yellow-400" : "w-12 h-12"
+                          }`}
+                      />
+                      <p className="mt-2 text-sm">User {rank}</p>
+                      <p className="text-red-600 font-semibold">10 điểm</p>
                     </div>
-                    <span className="text-red-600">10 điểm</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
 
+                </div>
+
+                {/* LIST */}
+                <div className="space-y-3">
+                  {[4, 5, 6, 7, 8].map((rank) => (
+                    <div key={rank} className="flex justify-between bg-white p-3 rounded-xl">
+                      <div className="flex gap-3 items-center">
+                        <span>{rank}</span>
+                        <img src={avatar} className="w-8 h-8 rounded-full" />
+                        <span>User {rank}</span>
+                      </div>
+                      <span className="text-red-600">10 điểm</span>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
       </div>
@@ -548,6 +568,13 @@ const ExamDetail = () => {
               <button
                 onClick={async () => {
                   if (!lastExam) return;
+
+                  if (!localStorage.getItem("accessToken")) {
+                    navigate("/login", {
+                      state: { from: `${location.pathname}${location.search}` },
+                    });
+                    return;
+                  }
 
                   try {
                     const res = await startAttempt({

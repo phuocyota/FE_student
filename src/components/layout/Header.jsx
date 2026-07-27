@@ -7,6 +7,7 @@ import {
   GraduationCap,
   User,
   ChevronDown,
+  ClipboardCheck,
 } from "lucide-react";
 import { getGrades } from "../../api/grade";
 import { getUserById } from "../../api/student";
@@ -411,6 +412,22 @@ const Header = () => {
             </div>
 
             <NavLink
+              to="/placement-test"
+              onClick={() => {
+                setActiveMenu("placement");
+                setShowExamMenu(false);
+              }}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 font-semibold transition whitespace-nowrap
+                ${location.pathname === "/placement-test"
+                  ? "bg-white text-green-700"
+                  : "hover:bg-green-600"
+                }`}
+            >
+              <ClipboardCheck size={18} />
+              Test đầu vào
+            </NavLink>
+
+            <NavLink
               to="/exam-dashboard"
               onClick={() => {
                 setActiveMenu("profile");
@@ -546,6 +563,23 @@ const Header = () => {
               <GraduationCap size={20} />
               Thi
             </button>
+
+            <NavLink
+              to="/placement-test"
+              onClick={() => {
+                setActiveMenu("placement");
+                setShowExamMenu(false);
+                setShowFloatingMenu(false);
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 font-semibold transition
+                ${location.pathname === "/placement-test"
+                  ? "bg-green-700 text-white"
+                  : "text-gray-800 hover:bg-green-50 hover:text-green-700"
+                }`}
+            >
+              <ClipboardCheck size={20} />
+              Test đầu vào
+            </NavLink>
 
             <NavLink
               to="/exam-dashboard"

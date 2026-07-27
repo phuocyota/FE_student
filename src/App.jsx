@@ -14,6 +14,7 @@ import ExamReview from "./pages/ExamReview";
 import GoldenBellExam from "./pages/GoldenBellExam";
 import GoldenBellArena from "./pages/GoldenBellArena";
 import TeacherGoldenBell from "./pages/TeacherGoldenBell";
+import PlacementTest from "./pages/PlacementTest";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import CertificateView from "./components/profile/CertificateView";
@@ -46,6 +47,7 @@ const App = () => {
 
           {/* HOME */}
           <Route path="/" element={<Home />} />
+          <Route path="/placement-test" element={<PlacementTest />} />
 
           {/* DASHBOARD */}
           <Route

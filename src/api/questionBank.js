@@ -6,6 +6,53 @@ export const getQuestionBankDetail = async (questionBankId, token) => {
   return parseResponse(res);
 };
 
+export const getQuestionBankOptions = async (token) => {
+  const params = new URLSearchParams({ page: "1", size: "1000" });
+  const response = await fetch(
+    `${API.QUESTION_BANK.LIST}?${params.toString()}`,
+    {},
+    token
+  );
+  const payload = await parseResponse(response);
+  const data = payload?.data?.data || payload?.data || payload;
+  const questionBanks = Array.isArray(data)
+    ? data
+    : data?.questionBanks || data?.items || data?.results || [];
+
+  return questionBanks
+    .filter((questionBank) => questionBank?.id)
+    .map((questionBank) => ({
+      id: questionBank.id,
+      name:
+        questionBank.title ||
+        questionBank.name ||
+        questionBank.code ||
+        "Đề thi chưa có tên",
+      examSetName:
+        questionBank.examSetName ||
+        questionBank.examSet?.name ||
+        questionBank.examSet?.title ||
+        "",
+      gradeName:
+        questionBank.gradeName ||
+        questionBank.grade?.name ||
+        questionBank.examSet?.grade?.name ||
+        "",
+      subjectName:
+        questionBank.subjectName ||
+        questionBank.subject?.name ||
+        questionBank.examSet?.subject?.name ||
+        "",
+      totalQuestions: questionBank.totalQuestions,
+    }))
+    .sort((a, b) =>
+    `${a.gradeName} ${a.subjectName} ${a.name}`.localeCompare(
+      `${b.gradeName} ${b.subjectName} ${b.name}`,
+      "vi"
+    )
+  );
+};
+
 export const getRandomQuestion = async (
   questionBankId,
   excludeQuestionIds = []

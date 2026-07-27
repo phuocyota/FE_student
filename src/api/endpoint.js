@@ -36,7 +36,13 @@ export const API = {
   `${API_BASE_URL}/attempt?questionBankId=${questionBankId}&examSetId=${examSetId}&status=${status}&page=${page}&size=${size}`,
      MY_STATISTICS: `${API_BASE_URL}/attempt/my-statistics`,
   },
+  PUBLIC_ATTEMPT: {
+    START: `${API_BASE_URL}/public-attempt/start`,
+    SUBMIT: (attemptId) =>
+      `${API_BASE_URL}/public-attempt/${attemptId}/end`,
+  },
   QUESTION_BANK: {
+    LIST: `${API_BASE_URL}/question-bank`,
     DETAIL: (questionBankId) =>
       `${API_BASE_URL}/question-bank/${questionBankId}`,
     RANDOM: (questionBankId) =>

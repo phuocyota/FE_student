@@ -3,6 +3,7 @@ import { getGrades } from "../api/grade";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { buildAssetUrl } from "../api/client";
+import { ArrowRight, BrainCircuit, Clock3, Sparkles } from "lucide-react";
 
 const SubjectImage = ({ image, alt }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -72,6 +73,42 @@ const Home = () => {
   return (
     <div className="bg-gray-100 min-h-screen py-6">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
+        <section className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-800 to-emerald-600 p-6 text-white shadow-sm sm:p-8">
+          <div className="absolute -right-12 -top-16 h-56 w-56 rounded-full bg-white/10" />
+          <div className="absolute -bottom-20 right-40 h-44 w-44 rounded-full bg-amber-300/15" />
+          <div className="relative flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold">
+                <Sparkles size={16} className="text-amber-300" />
+                Tính năng mới
+              </span>
+              <h1 className="mt-4 text-2xl font-bold sm:text-3xl">
+                Chưa biết nên bắt đầu từ đâu?
+              </h1>
+              <p className="mt-2 leading-6 text-emerald-50">
+                Làm bài test đầu vào để khám phá năng lực và nhận gợi ý lộ trình học phù hợp.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-4 text-sm text-emerald-100">
+                <span className="flex items-center gap-2">
+                  <BrainCircuit size={17} />
+                  4 nhóm năng lực
+                </span>
+                <span className="flex items-center gap-2">
+                  <Clock3 size={17} />
+                  Chỉ 20 phút
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/placement-test")}
+              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-emerald-800 shadow-lg transition hover:bg-amber-50 sm:w-auto"
+            >
+              Làm test ngay
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        </section>
 
         {grades.map((gradeItem) => (
           <div

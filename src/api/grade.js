@@ -13,3 +13,10 @@ export const getExamSetDetail = (id) => {
     method: "GET",
   });
 };
+
+export const getPublicExamSetDetail = (id) => {
+  return apiRequest(API.EXAM_SET.DETAIL(id), {
+    method: "GET",
+    skipAuth: true,
+  });
+};
