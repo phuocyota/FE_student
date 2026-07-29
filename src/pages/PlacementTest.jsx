@@ -181,6 +181,26 @@ const Content = ({ type, value, className = "" }) => {
   return <span className={className}>{value}</span>;
 };
 
+const getContentChain = (node) => {
+  if (Array.isArray(node?.chain) && node.chain.length) {
+    return node.chain.filter((item) => item?.content);
+  }
+
+  return node?.content ? [node] : [];
+};
+
+const ContentChain = ({ node, className = "" }) => (
+  <div className={`space-y-4 ${className}`}>
+    {getContentChain(node).map((item, index) => (
+      <Content
+        key={item.id || `${item.contentType}-${index}`}
+        type={item.contentType}
+        value={item.content}
+      />
+    ))}
+  </div>
+);
+
 const PlacementTest = () => {
   const navigate = useNavigate();
   const savedAttempt = useMemo(() => {
@@ -782,17 +802,10 @@ const PlacementTest = () => {
               Câu {currentQuestion + 1}/{questions.length}
             </span>
 
-            <div className="mt-7 text-xl font-bold leading-8 text-slate-900 sm:text-2xl">
-              <Content type={question.contentType} value={question.content} />
-            </div>
-            {question.nextContent && (
-              <div className="mt-4">
-                <Content
-                  type={question.contentType}
-                  value={question.nextContent}
-                />
-              </div>
-            )}
+            <ContentChain
+              node={question}
+              className="mt-7 text-xl font-bold leading-8 text-slate-900 sm:text-2xl"
+            />
 
             {isTextQuestion(question) ? (
               <textarea
@@ -834,10 +847,9 @@ const PlacementTest = () => {
                       >
                         {String.fromCharCode(65 + index)}
                       </span>
-                      <Content
-                        type={answer.contentType}
-                        value={answer.content}
-                        className="font-medium text-slate-800"
+                      <ContentChain
+                        node={answer}
+                        className="min-w-0 flex-1 font-medium text-slate-800"
                       />
                       {selected && (
                         <Check
