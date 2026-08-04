@@ -21,13 +21,17 @@ import { toast } from "react-hot-toast";
 import { loginTeacher } from "../api/auth";
 import { buildAssetUrl } from "../api/client";
 import {
+  getCurrentGoldenBellQuestionBank,
   getQuestionBankDetail,
   getQuestionBankOptions,
   getRandomQuestion,
 } from "../api/questionBank";
 import { createAppSocket } from "../api/socket";
+import {
+  buildContentChain,
+  getQuestionAnswerOptions,
+} from "../utils/questionContent";
 
-const DEFAULT_QUESTION_BANK_ID = "37b64ed4-0e46-4a00-9ae2-92b707d9a4ce";
 const TEACHER_STORAGE_KEYS = [
   "teacherAccessToken",
   "teacherName",
@@ -72,22 +76,6 @@ const toArray = (value) => {
   return Array.isArray(value) ? value : [value];
 };
 
-const buildContentChain = (node) => {
-  if (!node) return [];
-
-  const current =
-    node.contentType && node.content
-      ? [{ id: node.id, contentType: node.contentType, content: node.content }]
-      : [];
-
-  return [
-    ...current,
-    ...toArray(node.nextContentDetails).flatMap((item) =>
-      buildContentChain(item)
-    ),
-  ];
-};
-
 const createEmptyRoom = (roomId = "", questionBankId = "") => ({
   roomId,
   code: roomId,
@@ -116,7 +104,7 @@ const TeacherGoldenBell = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const questionBankId = id || DEFAULT_QUESTION_BANK_ID;
+  const questionBankId = id || "";
   const roomId = (searchParams.get("room") || "").trim().toUpperCase();
 
   const [teacher, setTeacher] = useState(getInitialTeacher);
@@ -157,13 +145,7 @@ const TeacherGoldenBell = () => {
     [room.currentQuestion]
   );
   const answers = useMemo(() => {
-    return toArray(room.currentQuestion?.answers).sort((a, b) => {
-      const orderA = a.orderNo ?? Number.MAX_SAFE_INTEGER;
-      const orderB = b.orderNo ?? Number.MAX_SAFE_INTEGER;
-
-      if (orderA !== orderB) return orderA - orderB;
-      return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
-    });
+    return getQuestionAnswerOptions(room.currentQuestion);
   }, [room.currentQuestion]);
 
   const isAuthenticated = Boolean(teacher.token);
@@ -205,7 +187,28 @@ const TeacherGoldenBell = () => {
   }, [room]);
 
   useEffect(() => {
-    if (!teacher.token) return undefined;
+    if (!teacher.token || questionBankId) return undefined;
+
+    let isCancelled = false;
+
+    getCurrentGoldenBellQuestionBank(teacher.token)
+      .then((questionBank) => {
+        if (isCancelled) return;
+        const roomQuery = roomId ? `?room=${encodeURIComponent(roomId)}` : "";
+        navigate(`/teacher/${questionBank.id}${roomQuery}`, { replace: true });
+      })
+      .catch((error) => {
+        if (isCancelled) return;
+        toast.error(error.message || "Không thể tải đề Rung chuông vàng");
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [navigate, questionBankId, roomId, teacher.token]);
+
+  useEffect(() => {
+    if (!teacher.token || !questionBankId) return undefined;
 
     let isCancelled = false;
 
@@ -323,7 +326,7 @@ const TeacherGoldenBell = () => {
   };
 
   useEffect(() => {
-    if (!teacher.token) return;
+    if (!teacher.token || !questionBankId) return undefined;
 
     const socket = createAppSocket(teacher.token);
     socketRef.current = socket;
@@ -392,6 +395,11 @@ const TeacherGoldenBell = () => {
   }, [navigate, questionBankId, roomId, teacher.token]);
 
   const handleCreateRoom = () => {
+    if (!questionBankId) {
+      toast.error("Đề Rung chuông vàng đang được tải, vui lòng thử lại");
+      return;
+    }
+
     if (!socketRef.current?.connected) {
       toast.error("Socket chưa kết nối, vui lòng thử lại");
       return;
@@ -658,6 +666,17 @@ const TeacherGoldenBell = () => {
               {isLoggingIn ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (!questionBankId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <div className="flex items-center gap-3 text-gray-600">
+          <Loader2 className="animate-spin" size={22} />
+          Đang tải đề Rung chuông vàng...
         </div>
       </div>
     );

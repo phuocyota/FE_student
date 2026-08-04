@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Gift, Users } from "lucide-react";
+import { Bell, CheckCircle2, Gift, Users } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
+import {
+  buildContentChain,
+  getQuestionAnswerOptions,
+} from "../utils/questionContent";
 
 const QUESTION_SECONDS = 15;
 
@@ -22,22 +26,6 @@ const getRemainingSeconds = (room) => {
 const toArray = (value) => {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
-};
-
-const buildContentChain = (node) => {
-  if (!node) return [];
-
-  const current =
-    node.contentType && node.content
-      ? [{ id: node.id, contentType: node.contentType, content: node.content }]
-      : [];
-
-  return [
-    ...current,
-    ...toArray(node.nextContentDetails).flatMap((item) =>
-      buildContentChain(item)
-    ),
-  ];
 };
 
 const createEmptyRoom = (roomId) => ({
@@ -87,18 +75,13 @@ const GoldenBellArena = () => {
     [room.currentQuestion]
   );
   const answers = useMemo(() => {
-    return toArray(room.currentQuestion?.answers).sort((a, b) => {
-      const orderA = a.orderNo ?? Number.MAX_SAFE_INTEGER;
-      const orderB = b.orderNo ?? Number.MAX_SAFE_INTEGER;
-
-      if (orderA !== orderB) return orderA - orderB;
-      return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
-    });
+    return getQuestionAnswerOptions(room.currentQuestion);
   }, [room.currentQuestion]);
   const currentQuestionId = room.currentQuestion?.id;
   const questionStartedAt = room.questionStartedAt;
   const questionDurationSeconds = room.questionDurationSeconds;
   const questionEndedAt = room.questionEndedAt;
+  const isTimeUp = Boolean(room.currentQuestion) && remainingSeconds <= 0;
   useEffect(() => {
     const socket = createAppSocket();
     socketRef.current = socket;
@@ -283,22 +266,42 @@ const GoldenBellArena = () => {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  {answers.map((answer, index) => (
-                    <div
-                      key={answer.id}
-                      className="flex min-h-20 items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-green-600 bg-green-50 text-sm font-black text-green-700">
-                        {String.fromCharCode(65 + index)}
+                  {answers.map((answer, index) => {
+                    const showCorrectAnswer = isTimeUp && answer.isCorrect;
+
+                    return (
+                      <div
+                        key={answer.id}
+                        className={`flex min-h-20 items-center gap-4 rounded-xl border px-5 py-4 shadow-sm transition-colors ${
+                          showCorrectAnswer
+                            ? "border-green-500 bg-green-50 ring-2 ring-green-200"
+                            : "border-gray-200 bg-white"
+                        }`}
+                      >
+                        <div
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-black ${
+                            showCorrectAnswer
+                              ? "border-green-600 bg-green-600 text-white"
+                              : "border-green-600 bg-green-50 text-green-700"
+                          }`}
+                        >
+                          {String.fromCharCode(65 + index)}
+                        </div>
+                        <div className="min-w-0 flex-1 text-base font-bold text-gray-800">
+                          {showCorrectAnswer && (
+                            <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-1 text-xs font-bold text-white">
+                              <CheckCircle2 size={14} />
+                              Đáp án đúng
+                            </div>
+                          )}
+                          {renderContent(
+                            buildContentChain(answer),
+                            "text-base font-bold text-gray-800"
+                          )}
+                        </div>
                       </div>
-                      <div className="text-base font-bold text-gray-800">
-                        {renderContent(
-                          buildContentChain(answer),
-                          "text-base font-bold text-gray-800"
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : (

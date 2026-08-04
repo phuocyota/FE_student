@@ -12,13 +12,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
+import {
+  buildContentChain,
+  getQuestionAnswerOptions,
+} from "../utils/questionContent";
 
 const QUESTION_SECONDS = 15;
-
-const toArray = (value) => {
-  if (!value) return [];
-  return Array.isArray(value) ? value : [value];
-};
 
 const getRemainingSeconds = (room) => {
   if (!room?.currentQuestion || room.questionEndedAt) return 0;
@@ -31,22 +30,6 @@ const getRemainingSeconds = (room) => {
     0,
     Math.ceil((startedAt + durationSeconds * 1000 - Date.now()) / 1000)
   );
-};
-
-const buildContentChain = (node) => {
-  if (!node) return [];
-
-  const current =
-    node.contentType && node.content
-      ? [{ id: node.id, contentType: node.contentType, content: node.content }]
-      : [];
-
-  return [
-    ...current,
-    ...toArray(node.nextContentDetails).flatMap((item) =>
-      buildContentChain(item)
-    ),
-  ];
 };
 
 const createStudentId = () => {
@@ -174,13 +157,7 @@ const GoldenBellRoom = ({ roomId }) => {
 
   const contentChain = useMemo(() => buildContentChain(question), [question]);
   const answers = useMemo(() => {
-    return toArray(question?.answers).sort((a, b) => {
-      const orderA = a.orderNo ?? Number.MAX_SAFE_INTEGER;
-      const orderB = b.orderNo ?? Number.MAX_SAFE_INTEGER;
-
-      if (orderA !== orderB) return orderA - orderB;
-      return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
-    });
+    return getQuestionAnswerOptions(question);
   }, [question]);
 
   const currentStudent = room.students.find((student) => student.id === studentId);

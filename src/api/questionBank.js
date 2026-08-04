@@ -1,9 +1,32 @@
 import { API } from "./endpoint";
 import { fetch, parseResponse } from "./client";
 
+const GOLDEN_BELL_EXAM_SET_ID =
+  import.meta.env.VITE_GOLDEN_BELL_EXAM_SET_ID ||
+  "21008c89-ab07-467e-9719-1df6f8f063b2";
+
 export const getQuestionBankDetail = async (questionBankId, token) => {
   const res = await fetch(API.QUESTION_BANK.DETAIL(questionBankId), {}, token);
   return parseResponse(res);
+};
+
+export const getCurrentGoldenBellQuestionBank = async (token) => {
+  const response = await fetch(
+    API.EXAM_SET.DETAIL(GOLDEN_BELL_EXAM_SET_ID),
+    {},
+    token
+  );
+  const payload = await parseResponse(response);
+  const examSet = payload?.data?.data || payload?.data || payload;
+  const questionBank = Array.isArray(examSet?.questionBanks)
+    ? examSet.questionBanks[0]
+    : null;
+
+  if (!questionBank?.id) {
+    throw new Error("Bộ đề Rung chuông vàng chưa có đề thi");
+  }
+
+  return questionBank;
 };
 
 export const getQuestionBankOptions = async (token) => {
