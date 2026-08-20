@@ -116,6 +116,7 @@ const TeacherGoldenBell = () => {
   const [questionBankInfo, setQuestionBankInfo] = useState({
     id: "",
     name: "",
+    totalQuestions: null,
   });
   const [questionBankOptions, setQuestionBankOptions] = useState([]);
   const [isQuestionBankMenuOpen, setIsQuestionBankMenuOpen] = useState(false);
@@ -223,6 +224,7 @@ const TeacherGoldenBell = () => {
             payload?.name ||
             payload?.code ||
             "Đề thi chưa có tên",
+          totalQuestions: Number(payload?.totalQuestions) || null,
         });
       })
       .catch(() => {
@@ -230,6 +232,7 @@ const TeacherGoldenBell = () => {
         setQuestionBankInfo({
           id: questionBankId,
           name: "Không tải được tên đề thi",
+          totalQuestions: null,
         });
       });
 
@@ -319,7 +322,11 @@ const TeacherGoldenBell = () => {
       return;
     }
 
-    setQuestionBankInfo({ id: option.id, name: option.name });
+    setQuestionBankInfo({
+      id: option.id,
+      name: option.name,
+      totalQuestions: Number(option.totalQuestions) || null,
+    });
     setIsQuestionBankMenuOpen(false);
     setQuestionBankSearch("");
     navigate(`/teacher/${option.id}`);
@@ -488,8 +495,44 @@ const TeacherGoldenBell = () => {
         roomRef.current || createEmptyRoom(roomId, questionBankId);
       const currentUsedIds = toArray(currentRoom.usedQuestionIds);
       const excludedIds = reset ? [] : currentUsedIds;
-      const response = await getRandomQuestion(questionBankId, excludedIds);
-      const nextQuestion = response?.data || response;
+      let response;
+
+      try {
+        response = await getRandomQuestion(questionBankId, excludedIds);
+      } catch (error) {
+        const totalQuestions = questionBankInfo.totalQuestions;
+        const stoppedBeforeExpectedTotal =
+          !reset &&
+          error.status === 404 &&
+          totalQuestions &&
+          currentUsedIds.length < totalQuestions;
+
+        if (!stoppedBeforeExpectedTotal) throw error;
+
+        const usedIds = new Set(currentUsedIds);
+        const compactExcludedIds = currentUsedIds.slice(-35);
+
+        for (let attempt = 0; attempt < 80; attempt += 1) {
+          const candidateResponse = await getRandomQuestion(
+            questionBankId,
+            compactExcludedIds
+          );
+          const candidate =
+            candidateResponse?.data?.data ||
+            candidateResponse?.data ||
+            candidateResponse;
+
+          if (candidate?.id && !usedIds.has(candidate.id)) {
+            response = candidateResponse;
+            break;
+          }
+        }
+
+        if (!response) throw error;
+      }
+
+      const nextQuestion =
+        response?.data?.data || response?.data || response;
 
       if (!nextQuestion?.id) {
         throw new Error("Không nhận được dữ liệu câu hỏi");

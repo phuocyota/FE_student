@@ -9,18 +9,49 @@ const unauthenticatedResult = {
 
 const hasAccessToken = () => Boolean(localStorage.getItem("accessToken"));
 
+const normalizeGroupedAttempt = (payload) => {
+  const attempt = payload?.data;
+
+  if (!Array.isArray(attempt?.groups)) return payload;
+
+  return {
+    ...payload,
+    data: {
+      ...attempt,
+      questions: attempt.groups.flatMap((group) =>
+        Array.isArray(group?.questions) ? group.questions : []
+      ),
+    },
+  };
+};
+
+const postAttempt = async (url, data, token) => {
+  const res = await fetch(
+    url,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    },
+    token
+  );
+
+  return parseResponse(res);
+};
+
 export const startAttempt = async (data) => {
   if (!hasAccessToken()) return unauthenticatedResult;
 
-  const res = await fetch(API.ATTEMPT.START, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  return postAttempt(API.ATTEMPT.START, data);
+};
 
-  return parseResponse(res);
+export const startAttemptWithGroup = async (data) => {
+  if (!hasAccessToken()) return unauthenticatedResult;
+
+  const payload = await postAttempt(API.ATTEMPT.START_WITH_GROUP, data);
+  return normalizeGroupedAttempt(payload);
 };
 
 export const submitAttempt = async (attemptId, answers) => {
@@ -38,19 +69,16 @@ export const submitAttempt = async (attemptId, answers) => {
 };
 
 export const startPublicAttempt = async (data) => {
-  const res = await fetch(
-    API.PUBLIC_ATTEMPT.START,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    },
+  return postAttempt(API.PUBLIC_ATTEMPT.START, data, null);
+};
+
+export const startPublicAttemptWithGroup = async (data) => {
+  const payload = await postAttempt(
+    API.PUBLIC_ATTEMPT.START_WITH_GROUP,
+    data,
     null
   );
-
-  return parseResponse(res);
+  return normalizeGroupedAttempt(payload);
 };
 
 export const submitPublicAttempt = async (attemptId, answers) => {

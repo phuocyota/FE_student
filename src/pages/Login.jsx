@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import logo from "../assets/kido.jpg";
+import logo from "../assets/logo_ichi.png";
 import toast from "react-hot-toast";
 import cancelIcon from "../assets/cancle.png";
 import { loginStudent } from "../api/auth";
@@ -189,12 +189,12 @@ const Login = () => {
 
           <img
             src={logo}
-            alt="KIDO Logo"
+            alt="ICHI SKILL Logo"
             className="w-56 h-56 object-cover rounded-full shadow-xl border-8 border-white mb-6"
           />
 
           <h1 className="text-3xl font-bold tracking-wide">
-            KIDO Education
+            ICHI SKILL
           </h1>
 
         </div>

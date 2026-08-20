@@ -5,9 +5,15 @@ const RAW_BASE_URL =
 
 const RAW_API_PREFIX = import.meta.env.VITE_API_PREFIX || "";
 
+const RAW_ASSET_BASE_URL =
+  import.meta.env.VITE_ASSET_BASE_URL ||
+  RAW_BASE_URL;
+
 const normalizeBaseUrl = (url) => url.replace(/\/$/, "");
 
 export const BASE_URL = normalizeBaseUrl(RAW_BASE_URL);
+
+export const ASSET_BASE_URL = normalizeBaseUrl(RAW_ASSET_BASE_URL);
 
 const API_PREFIX = normalizeBaseUrl(RAW_API_PREFIX);
 
@@ -30,7 +36,7 @@ export const buildAssetUrl = (path) => {
 
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
-  return `${BASE_URL}${normalizedPath}`;
+  return `${ASSET_BASE_URL}${normalizedPath}`;
 };
 
 // export const buildAssetUrl = (path) => {

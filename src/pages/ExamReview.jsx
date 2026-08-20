@@ -1,7 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { getAttemptReview, startAttempt } from "../api/attempt";
+import {
+  getAttemptReview,
+  startAttempt,
+  startAttemptWithGroup,
+} from "../api/attempt";
 import { buildAssetUrl } from "../api/client";
 
 const ExamReview = () => {
@@ -34,7 +38,14 @@ const ExamReview = () => {
           setQuestions(res.data.questions);
           setExamInfo({
             questionBankId: res.data.questionBankId,
-            examSetId: res.data.examSetId
+            examSetId: res.data.examSetId,
+            sectionCount:
+              res.data.sectionCount ??
+              new Set(
+                (res.data.questions || [])
+                  .map((question) => question.sectionId)
+                  .filter(Boolean)
+              ).size,
           });
         }
 
@@ -52,7 +63,11 @@ const ExamReview = () => {
 
     try {
 
-      const res = await startAttempt({
+      const startExam =
+        Number(examInfo.sectionCount) > 0
+          ? startAttemptWithGroup
+          : startAttempt;
+      const res = await startExam({
         questionBankId: examInfo.questionBankId,
         examSetId: examInfo.examSetId
       });
@@ -62,7 +77,9 @@ const ExamReview = () => {
         navigate(`/exam-doing/${examInfo.questionBankId}`, {
           state: {
             attemptId: res.data.attemptId,
-            questions: res.data.questions
+            questions: res.data.questions,
+            groups: res.data.groups,
+            questionBankName: res.data.questionBankName,
           }
         });
 

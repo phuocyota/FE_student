@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import logo from "../../assets/kido.jpg";
+import logo from "../../assets/logo_ichi.png";
 import menuBar from "../../assets/menu_bar.png";
 import { useNavigate } from "react-router-dom";
 import {
@@ -386,7 +386,7 @@ const Header = () => {
               <Link to="/">
                 <img
                   src={logo}
-                  alt="logo"
+                  alt="ICHI SKILL"
                   className="w-full h-full object-cover cursor-pointer"
                 />
               </Link>
@@ -522,7 +522,7 @@ const Header = () => {
       >
         <img
           src={logo}
-          alt="KIDO"
+          alt="ICHI SKILL"
           draggable="false"
           className="h-full w-full object-cover"
         />
@@ -538,10 +538,10 @@ const Header = () => {
         >
           <div className="mb-3 flex items-center gap-3 border-b pb-3">
             <div className="h-10 w-10 overflow-hidden rounded-full">
-              <img src={logo} alt="KIDO" className="h-full w-full object-cover" />
+              <img src={logo} alt="ICHI SKILL" className="h-full w-full object-cover" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-gray-900">KIDOEDU</div>
+              <div className="text-sm font-semibold text-gray-900">ICHI SKILL</div>
             </div>
           </div>
 

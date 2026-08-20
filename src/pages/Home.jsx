@@ -23,6 +23,7 @@ const SubjectImage = ({ image, alt }) => {
       <img
         src={buildAssetUrl(image)}
         alt={alt}
+        crossOrigin="anonymous"
         loading="lazy"
         decoding="async"
         onLoad={() => setIsLoaded(true)}

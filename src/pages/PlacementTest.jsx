@@ -16,7 +16,11 @@ import {
   Target,
   X,
 } from "lucide-react";
-import { startPublicAttempt, submitPublicAttempt } from "../api/attempt";
+import {
+  startPublicAttempt,
+  startPublicAttemptWithGroup,
+  submitPublicAttempt,
+} from "../api/attempt";
 import { buildAssetUrl } from "../api/client";
 import { getPublicExamSetDetail } from "../api/grade";
 
@@ -396,7 +400,11 @@ const PlacementTest = () => {
     setFormError("");
 
     try {
-      const payload = await startPublicAttempt({
+      const startAttempt =
+        Number(selectedQuestionBank?.sectionCount) > 0
+          ? startPublicAttemptWithGroup
+          : startPublicAttempt;
+      const payload = await startAttempt({
         guestName: normalizedName,
         questionBankId: selectedQuestionBankId,
         examSetId: EXAM_SET_ID,

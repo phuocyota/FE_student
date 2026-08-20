@@ -27,6 +27,7 @@ export const API = {
   },
   ATTEMPT: {
     START: `${API_BASE_URL}/attempt/start`,
+    START_WITH_GROUP: `${API_BASE_URL}/attempt/start-with-group`,
     SUBMIT: (attemptId) => `${API_BASE_URL}/attempt/${attemptId}/end`,
     REVIEW: (attemptId) => `${API_BASE_URL}/attempt/${attemptId}/review`,
     EXAM_HISTORY: (fromDate, toDate) =>
@@ -38,6 +39,7 @@ export const API = {
   },
   PUBLIC_ATTEMPT: {
     START: `${API_BASE_URL}/public-attempt/start`,
+    START_WITH_GROUP: `${API_BASE_URL}/public-attempt/start-with-group`,
     SUBMIT: (attemptId) =>
       `${API_BASE_URL}/public-attempt/${attemptId}/end`,
   },

@@ -3,7 +3,11 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Clock } from "lucide-react";
 import avatar from "../assets/avatar.png";
-import { startAttempt, getAttemptList } from "../api/attempt";
+import {
+  startAttempt,
+  startAttemptWithGroup,
+  getAttemptList,
+} from "../api/attempt";
 import { API } from "../api/endpoint";
 import { fetch, parseResponse } from "../api/client";
 import { getCurrentUser } from "../api/student";
@@ -98,7 +102,9 @@ const ExamDetail = () => {
     setIsStarting(true);
 
     try {
-      const res = await startAttempt({
+      const startExam =
+        Number(qb.sectionCount) > 0 ? startAttemptWithGroup : startAttempt;
+      const res = await startExam({
         questionBankId: qb.id,
         examSetId,
       });
@@ -108,6 +114,7 @@ const ExamDetail = () => {
           state: {
             attemptId: res.data.attemptId,
             questions: res.data.questions,
+            groups: res.data.groups,
             questionBankName: res.data.questionBankName,
           },
         });
@@ -577,7 +584,14 @@ const ExamDetail = () => {
                   }
 
                   try {
-                    const res = await startAttempt({
+                    const questionBank = questionBanks.find(
+                      (item) => item.id === lastExam.questionBankId
+                    );
+                    const startExam =
+                      Number(questionBank?.sectionCount) > 0
+                        ? startAttemptWithGroup
+                        : startAttempt;
+                    const res = await startExam({
                       questionBankId: lastExam.questionBankId,
                       examSetId: lastExam.examSetId
                     });
@@ -586,7 +600,9 @@ const ExamDetail = () => {
                       navigate(`/exam-doing/${lastExam.questionBankId}`, {
                         state: {
                           attemptId: res.data.attemptId,
-                          questions: res.data.questions
+                          questions: res.data.questions,
+                          groups: res.data.groups,
+                          questionBankName: res.data.questionBankName,
                         }
                       });
                     }

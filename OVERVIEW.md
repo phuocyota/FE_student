@@ -85,7 +85,7 @@ src/
 │   └── mockEnglishExam.js   # Mẫu dữ liệu thi tiếng Anh
 │
 ├── assets/                  # Static assets
-│   ├── kido.jpg
+│   ├── logo_ichi.png
 │   ├── avatar.png
 │   ├── cancle.png
 │   ├── menu_bar.png
