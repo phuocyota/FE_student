@@ -27,6 +27,10 @@ import {
   getRandomQuestion,
 } from "../api/questionBank";
 import { createAppSocket } from "../api/socket";
+import TeacherGoldenBellCelebration from "../components/TeacherGoldenBell/TeacherGoldenBellCelebration";
+import TeacherGoldenBellAutoFinish from "../components/TeacherGoldenBell/TeacherGoldenBellAutoFinish";
+import { getGoldenBellWinner } from "../utils/goldenBellWinner";
+import GoldenBellWinnerBadge from "../components/GoldenBell/GoldenBellWinnerBadge";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -150,6 +154,8 @@ const TeacherGoldenBell = () => {
   }, [room.currentQuestion]);
 
   const isAuthenticated = Boolean(teacher.token);
+  const winner = getGoldenBellWinner(room);
+  const isRoomFinished = room.status === "FINISHED" || room.status === "EXPIRED";
   const questionBankName =
     questionBankInfo.id === questionBankId
       ? questionBankInfo.name
@@ -366,6 +372,15 @@ const TeacherGoldenBell = () => {
       if (!nextRoom) return;
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
+        if (nextRoom.status === "FINISHED" &&
+          (getGoldenBellWinner(nextRoom) || getGoldenBellWinner(roomRef.current))) {
+          const finalRoom = { ...roomRef.current, ...nextRoom };
+          if (!getGoldenBellWinner(finalRoom)) finalRoom.students = roomRef.current.students;
+          if (!finalRoom.questionNo) finalRoom.questionNo = roomRef.current.questionNo;
+          roomRef.current = finalRoom;
+          setRoom(finalRoom);
+          return;
+        }
         setRoom(createEmptyRoom("", questionBankId));
         navigate(`/teacher/${questionBankId}`, { replace: true });
         if (nextRoom.status === "EXPIRED") {
@@ -400,6 +415,12 @@ const TeacherGoldenBell = () => {
       socketRef.current = null;
     };
   }, [navigate, questionBankId, roomId, teacher.token]);
+
+  const handleAutoFinished = useCallback(() => {
+    const finalRoom = { ...roomRef.current, status: "FINISHED" };
+    roomRef.current = finalRoom;
+    setRoom(finalRoom);
+  }, []);
 
   const handleCreateRoom = () => {
     if (!questionBankId) {
@@ -482,6 +503,7 @@ const TeacherGoldenBell = () => {
   };
 
   const fetchQuestion = async ({ reset = false } = {}) => {
+    if (isRoomFinished || getGoldenBellWinner(roomRef.current)) return;
     setIsLoadingQuestion(true);
     setIsOutOfQuestions(false);
 
@@ -574,6 +596,7 @@ const TeacherGoldenBell = () => {
   };
 
   const handleResetRoom = () => {
+    if (isRoomFinished || getGoldenBellWinner(roomRef.current)) return;
     syncRoom({
       ...createEmptyRoom(roomId, questionBankId),
       students: students.map((student) => ({
@@ -608,6 +631,10 @@ const TeacherGoldenBell = () => {
           return;
         }
 
+        if (getGoldenBellWinner(roomRef.current)) {
+          handleAutoFinished();
+          return;
+        }
         setRoom(createEmptyRoom("", questionBankId));
         navigate(`/teacher/${questionBankId}`, { replace: true });
         toast.success(`Đã kết thúc phòng ${roomId}`);
@@ -727,6 +754,9 @@ const TeacherGoldenBell = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <TeacherGoldenBellCelebration room={room} roomId={roomId} />
+      <TeacherGoldenBellAutoFinish room={room} roomId={roomId} socketRef={socketRef} socketStatus={socketStatus} onFinished={handleAutoFinished} />
+      {isRoomFinished && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng {roomId} đã kết thúc. Thầy/Cô có thể tạo phòng khác để bắt đầu cuộc thi mới.</p>}
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -944,7 +974,7 @@ const TeacherGoldenBell = () => {
                   <button
                     type="button"
                     onClick={handleResetRoom}
-                    disabled={!roomId}
+                    disabled={!roomId || isRoomFinished || Boolean(getGoldenBellWinner(room))}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     <RotateCcw size={16} />
@@ -953,7 +983,7 @@ const TeacherGoldenBell = () => {
                   <button
                     type="button"
                     onClick={handleEndRoom}
-                    disabled={!roomId || isEndingRoom}
+                    disabled={!roomId || isEndingRoom || isRoomFinished}
                     className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                   >
                     {isEndingRoom ? (
@@ -965,7 +995,7 @@ const TeacherGoldenBell = () => {
                   </button>
                   <button
                     type="button"
-                    disabled={!roomId || isLoadingQuestion}
+                    disabled={!roomId || isLoadingQuestion || isRoomFinished || Boolean(getGoldenBellWinner(room))}
                     onClick={() => fetchQuestion()}
                     className="inline-flex items-center gap-2 rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700 disabled:opacity-60"
                   >
@@ -1046,7 +1076,7 @@ const TeacherGoldenBell = () => {
                     {students.map((student) => (
                       <div
                         key={student.id}
-                        className="rounded-lg border border-gray-200 p-3"
+                        className={`rounded-lg border p-3 ${winner?.id === student.id ? "border-yellow-400 bg-gradient-to-b from-yellow-50 to-amber-100" : "border-gray-200"}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
@@ -1055,7 +1085,7 @@ const TeacherGoldenBell = () => {
                               Câu cuối: {student.lastQuestionNo || 0}
                             </p>
                           </div>
-                          <span
+                          {winner?.id === student.id ? <GoldenBellWinnerBadge /> : <span
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${
                               student.status === "passed"
                                 ? "bg-green-100 text-green-700"
@@ -1076,7 +1106,7 @@ const TeacherGoldenBell = () => {
                               : student.status === "eliminated"
                                 ? "Bị loại"
                                 : "Đang thi"}
-                          </span>
+                          </span>}
                         </div>
                         <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                           <div className="rounded bg-green-50 px-2 py-1 text-green-700">

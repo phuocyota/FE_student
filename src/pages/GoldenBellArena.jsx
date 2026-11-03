@@ -3,6 +3,9 @@ import { Bell, CheckCircle2, Gift, Users } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
+import GoldenBellArenaCelebration from "../components/GoldenBellArena/GoldenBellArenaCelebration";
+import GoldenBellArenaStudentCard from "../components/GoldenBellArena/GoldenBellArenaStudentCard";
+import { getGoldenBellWinner } from "../utils/goldenBellWinner";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -37,23 +40,6 @@ const createEmptyRoom = (roomId) => ({
   students: [],
 });
 
-const getSeatColor = (index) => {
-  const colors = [
-    "bg-rose-500",
-    "bg-pink-500",
-    "bg-blue-500",
-    "bg-violet-500",
-    "bg-emerald-500",
-    "bg-amber-400",
-    "bg-indigo-500",
-    "bg-teal-400",
-    "bg-orange-500",
-    "bg-fuchsia-500",
-  ];
-
-  return colors[index % colors.length];
-};
-
 const GoldenBellArena = () => {
   const { id } = useParams();
   const roomId = (id || "").trim().toUpperCase();
@@ -64,6 +50,7 @@ const GoldenBellArena = () => {
   const socketRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
+  const winner = getGoldenBellWinner(room);
   const activeCount = students.filter(
     (student) => student.status !== "eliminated"
   ).length;
@@ -115,10 +102,14 @@ const GoldenBellArena = () => {
             ? "Phòng đã hết hạn sau 24 giờ."
             : "Giáo viên đã kết thúc phòng thi đấu."
         );
-        setRoom({
-          ...createEmptyRoom(roomId),
-          status: nextRoom.status,
-        });
+        setRoom((previousRoom) => ({
+          ...previousRoom,
+          ...nextRoom,
+          students: nextRoom.students?.length ? toArray(nextRoom.students) : previousRoom.students,
+          questionNo: nextRoom.questionNo || previousRoom.questionNo,
+          questionEndedAt: nextRoom.questionEndedAt || new Date().toISOString(),
+        }));
+        setRemainingSeconds(0);
         return;
       }
 
@@ -215,6 +206,8 @@ const GoldenBellArena = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 via-gray-100 to-white text-gray-900">
+      <GoldenBellArenaCelebration room={room} roomId={roomId} />
+      {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng thi đã kết thúc.</p>}
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-8">
         <header className="mb-6 flex flex-col gap-4 border-b border-green-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -350,35 +343,14 @@ const GoldenBellArena = () => {
               </div>
             ) : (
               <div className="grid max-h-[38vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10">
-                {students.map((student, index) => {
-                  const isEliminated = student.status === "eliminated";
-                  const isPassed = student.status === "passed";
-
-                  return (
-                    <div
+                {students.map((student, index) => (
+                    <GoldenBellArenaStudentCard
                       key={student.id}
-                      className={`rounded-lg border px-3 py-3 text-center ${
-                        isEliminated
-                          ? "border-gray-200 bg-gray-100 opacity-50"
-                          : isPassed
-                            ? "border-green-400 bg-green-50"
-                            : "border-gray-200 bg-white"
-                      }`}
-                    >
-                      <div
-                        className={`mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white ${getSeatColor(index)}`}
-                      >
-                        {index + 1}
-                      </div>
-                      <div className="truncate text-xs font-normal text-gray-900">
-                        {student.name}
-                      </div>
-                      <div className="mt-1 text-[10px] font-bold uppercase text-gray-500">
-                        {isEliminated ? "Hạ bảng" : "Đang đấu"}
-                      </div>
-                    </div>
-                  );
-                })}
+                      student={student}
+                      index={index}
+                      isWinner={winner?.id === student.id}
+                    />
+                ))}
               </div>
             )}
           </section>

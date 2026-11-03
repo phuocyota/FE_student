@@ -12,6 +12,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
+import GoldenBellExamCelebration from "../components/GoldenBellExam/GoldenBellExamCelebration";
+import { getGoldenBellWinner } from "../utils/goldenBellWinner";
+import GoldenBellWinnerBadge from "../components/GoldenBell/GoldenBellWinnerBadge";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -161,10 +164,12 @@ const GoldenBellRoom = ({ roomId }) => {
   }, [question]);
 
   const currentStudent = room.students.find((student) => student.id === studentId);
+  const winner = getGoldenBellWinner(room);
+  const isCurrentStudentWinner = winner?.id === studentId;
   const hasSelected = Boolean(selectedAnswer);
   const isCorrect = Boolean(selectedAnswer?.isCorrect);
   const isEliminated = currentStudent?.status === "eliminated";
-  const isQuestionClosed = Boolean(room.questionEndedAt);
+  const isQuestionClosed = Boolean(room.questionEndedAt) || room.status === "FINISHED" || room.status === "EXPIRED";
   const joinedCount = room.students.length;
   const passedCount = room.students.filter(
     (student) => student.status === "passed" && student.lastQuestionNo === questionNo
@@ -254,9 +259,23 @@ const GoldenBellRoom = ({ roomId }) => {
     };
 
     const handleRoomState = (nextRoom) => {
-      if (!nextRoom?.students) return;
+      if (!nextRoom) return;
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
+        const finalRoom = {
+          ...roomRef.current,
+          ...nextRoom,
+          students: nextRoom.students?.length ? nextRoom.students : roomRef.current.students,
+          questionNo: nextRoom.questionNo || roomRef.current.questionNo,
+        };
+        roomRef.current = finalRoom;
+        setRoom(finalRoom);
+        setRemainingSeconds(0);
+        localStorage.setItem(roomKey, JSON.stringify(finalRoom));
+        if (nextRoom.status === "FINISHED" && getGoldenBellWinner(finalRoom)?.id === studentId) {
+          setRoomError("");
+          return;
+        }
         setRoomError(
           nextRoom.status === "EXPIRED"
             ? "Phòng đã hết hạn sau 24 giờ."
@@ -265,6 +284,7 @@ const GoldenBellRoom = ({ roomId }) => {
         return;
       }
 
+      if (!nextRoom.students) return;
       roomRef.current = nextRoom;
       setRoom(nextRoom);
       setRemainingSeconds(getRemainingSeconds(nextRoom));
@@ -456,6 +476,8 @@ const GoldenBellRoom = ({ roomId }) => {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-green-50 via-gray-100 to-white">
+      <GoldenBellExamCelebration room={room} roomId={roomId} studentId={studentId} />
+      {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng thi đã kết thúc. Chúc mừng bạn là sĩ tử cuối cùng!</p>}
       <div className="max-w-6xl mx-auto px-4 py-5 md:py-8">
         <div className="mb-5 overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">
           <div className="bg-green-700 px-5 py-4 text-white md:px-6">
@@ -540,11 +562,11 @@ const GoldenBellRoom = ({ roomId }) => {
               </div>
 
               {currentStudent ? (
-                <div className="rounded-lg border border-green-200 bg-white px-4 py-3">
+                <div className={`rounded-lg border px-4 py-3 ${isCurrentStudentWinner ? "border-yellow-400 bg-gradient-to-b from-yellow-50 to-amber-100" : "border-green-200 bg-white"}`}>
                   <p className="text-sm text-gray-600">Thí sinh</p>
                   <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <span className="font-bold text-gray-900">{currentStudent.name}</span>
-                    <span
+                    {isCurrentStudentWinner ? <GoldenBellWinnerBadge /> : <span
                       className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${
                         currentStudent.status === "eliminated"
                           ? "bg-red-100 text-red-700"
@@ -554,7 +576,7 @@ const GoldenBellRoom = ({ roomId }) => {
                       }`}
                     >
                       {studentStatusLabel}
-                    </span>
+                    </span>}
                   </div>
                 </div>
               ) : (
@@ -577,26 +599,26 @@ const GoldenBellRoom = ({ roomId }) => {
                   room.students.map((student, index) => (
                     <div
                       key={student.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2"
+                      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${winner?.id === student.id ? "border-yellow-400 bg-yellow-50" : "border-gray-200"}`}
                     >
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-black text-green-700">
+                        {winner?.id === student.id ? <GoldenBellWinnerBadge iconOnly /> : <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-black text-green-700">
                           {index + 1}
-                        </span>
+                        </span>}
                         <span className="truncate text-sm font-semibold text-gray-800">
                           {student.name}
                         </span>
                       </div>
                       <span
                         className={`text-xs font-bold ${
-                          student.status === "passed"
+                          winner?.id === student.id ? "text-amber-800" : student.status === "passed"
                             ? "text-green-700"
                             : student.status === "eliminated"
                               ? "text-red-600"
                               : "text-gray-500"
                         }`}
                       >
-                        {student.status === "passed"
+                        {winner?.id === student.id ? "Chiến thắng" : student.status === "passed"
                           ? "Qua"
                           : student.status === "eliminated"
                             ? "Hạ bảng"
