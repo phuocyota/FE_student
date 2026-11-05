@@ -1,0 +1,7 @@
+Tool: built-in image_gen (imagegen skill)
+Input: src/assets/bang_xep_loai.jpg
+Output: src/assets/ranking-podium-transparent.png
+Transparent background: true
+
+Prompt:
+Use case: background-extraction. Edit target: the supplied square JPEG of a golden winners podium. Remove ONLY the gray and white checkerboard background, including every checkerboard square around the podium and above it, replacing it with genuine alpha transparency. Keep the original podium exactly: same golden yellow color, three-dimensional illustrated outline and perspective, three blocks, tall center block numbered 1, left block numbered 2, right block numbered 3, same proportions and positions. No people, no names, no extra text, no new shadow, no backdrop. Preserve the square 360x360 composition and original object position; do not crop or stretch the podium. Deliver transparent PNG.

@@ -5,5 +5,11 @@ export const getGoldenBellWinner = (room) => {
   const remaining = students.filter((student) =>
     student.status === "active" || student.status === "passed"
   );
-  return remaining.length === 1 ? remaining[0] : null;
+  if (remaining.length !== 1) return null;
+
+  const candidate = remaining[0];
+  // The last contestant must pass this round before being declared the winner.
+  return candidate.status === "passed" && candidate.lastQuestionNo === room.questionNo && (candidate.resumeFromQuestionNo || 0) <= room.questionNo
+    ? candidate
+    : null;
 };

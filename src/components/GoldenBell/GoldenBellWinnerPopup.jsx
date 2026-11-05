@@ -1,9 +1,15 @@
 import React, { useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Trophy, X } from "lucide-react";
 import { launchFireworks, playApplause, prepareApplause } from "./celebrationEffects";
 import { getGoldenBellWinner } from "../../utils/goldenBellWinner";
+import StudentAvatar from "./StudentAvatar";
+import { openGoldenBellRanking } from "../../utils/goldenBellRanking";
 
 const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const winner = getGoldenBellWinner(room);
   const overlayRef = useRef(null);
   const canvasRef = useRef(null);
   const nameRef = useRef(null);
@@ -55,6 +61,7 @@ const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
     }
 
     const winner = getGoldenBellWinner(room);
+    if (!winner) celebratedRef.current = false;
     if (!winner || (eligibleStudentId !== undefined && winner.id !== eligibleStudentId)) {
       stopRef.current();
       return;
@@ -89,6 +96,7 @@ const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
   }, [room, roomId, eligibleStudentId]);
 
   return (
+    <>
     <div ref={overlayRef} hidden>
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
         <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full" />
@@ -107,13 +115,19 @@ const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
           </button>
           <Trophy className="mx-auto mb-3 text-yellow-500" size={52} />
           <p className="text-sm font-bold uppercase tracking-widest text-yellow-700">Chúc mừng thí sinh cuối cùng!</p>
+          {winner && <div className="mt-4 flex justify-center"><StudentAvatar student={winner} className="h-28 w-28" /></div>}
           <p ref={nameRef} className="mt-3 break-words text-3xl font-black text-green-800" />
           <p className="mt-2 text-gray-600">Thí sinh duy nhất còn lại trong sân thi đấu</p>
           <p ref={detailsRef} className="mt-4 text-sm leading-6 text-gray-600" />
-          <button type="button" onClick={() => stopRef.current()} className="mt-6 rounded-xl bg-green-700 px-6 py-3 font-bold text-white hover:bg-green-800">Đóng kết quả</button>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <button type="button" onClick={() => { stopRef.current(); navigate("/"); }} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white hover:bg-green-800">Trở về trang chủ</button>
+            <button type="button" onClick={() => { stopRef.current(); openGoldenBellRanking(navigate, room, `${location.pathname}${location.search}`); }} className="rounded-xl border border-green-700 px-5 py-3 font-bold text-green-700 hover:bg-green-50">Xếp hạng</button>
+          </div>
+          <button type="button" onClick={() => stopRef.current()} className="mt-4 text-sm font-semibold text-gray-600 hover:underline">Tiếp tục theo dõi</button>
         </div>
       </div>
     </div>
+    </>
   );
 };
 

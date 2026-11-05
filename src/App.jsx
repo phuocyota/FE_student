@@ -14,6 +14,8 @@ import ExamReview from "./pages/ExamReview";
 import GoldenBellExam from "./pages/GoldenBellExam";
 import GoldenBellArena from "./pages/GoldenBellArena";
 import TeacherGoldenBell from "./pages/TeacherGoldenBell";
+import GoldenBellDemoTeacher from "./pages/GoldenBellDemoTeacher";
+import GoldenBellRanking from "./pages/GoldenBellRanking";
 import PlacementTest from "./pages/PlacementTest";
 import TeacherTest from "./pages/TeacherTest";
 
@@ -113,7 +115,7 @@ const App = () => {
           <Route
             path="/golden-bell"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowDemo>
                 <GoldenBellExam />
               </ProtectedRoute>
             }
@@ -122,7 +124,7 @@ const App = () => {
           <Route
             path="/golden-bell/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowDemo>
                 <GoldenBellExam />
               </ProtectedRoute>
             }
@@ -138,6 +140,8 @@ const App = () => {
             element={<GoldenBellArena />}
           />
 
+          <Route path="/teacher/demo" element={<GoldenBellDemoTeacher />} />
+          <Route path="/xep-hang" element={<GoldenBellRanking />} />
           <Route
             path="/teacher"
             element={<TeacherGoldenBell />}

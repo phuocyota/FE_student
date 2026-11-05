@@ -7,6 +7,8 @@ import toast from "react-hot-toast";
 import cancelIcon from "../assets/cancle.png";
 import { loginStudent } from "../api/auth";
 import { getUserById } from "../api/student";
+import StudentRegistration from "../components/StudentRegistration";
+import { clearActiveDemoStudent } from "../utils/demoRegistration";
 
 const Login = () => {
   // localStorage.clear();
@@ -24,6 +26,7 @@ const Login = () => {
   });
 
   const [error, setError] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ⭐ kiểm tra token từ WebView2
@@ -147,6 +150,7 @@ const Login = () => {
       }
 
       // 1️⃣ lưu token trước
+      clearActiveDemoStudent();
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userType", userType);
@@ -181,26 +185,9 @@ const Login = () => {
     }
   };
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-6">
-      <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
-
-        {/* LEFT */}
-        <div className="hidden md:flex flex-col items-center justify-center bg-green-700 text-white p-10">
-
-          <img
-            src={logo}
-            alt="ICHI SKILL Logo"
-            className="w-56 h-56 object-cover rounded-full shadow-xl border-8 border-white mb-6"
-          />
-
-          <h1 className="text-3xl font-bold tracking-wide">
-            ICHI SKILL
-          </h1>
-
-        </div>
-
-        {/* RIGHT */}
-        <div className="flex items-center justify-center p-10">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-8 sm:px-6">
+      <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-center p-5 sm:p-8">
 
           <div className="w-full max-w-md relative">
 
@@ -211,6 +198,16 @@ const Login = () => {
               className="w-6 h-6 absolute top-0 right-0 cursor-pointer hover:scale-110 transition"
             />
 
+            <div className="mb-6 flex flex-col items-center gap-2">
+              <img src={logo} alt="ICHI SKILL Logo" className="h-20 w-20 rounded-full object-contain" />
+              <h1 className="text-lg font-bold tracking-wide text-green-700">ICHI SKILL</h1>
+            </div>
+
+            {isRegistering ? (
+              <div>
+                <StudentRegistration onBack={() => setIsRegistering(false)} />
+              </div>
+            ) : <>
             <h2 className="text-2xl font-bold text-green-700 mb-8 text-center">
               Đăng nhập
             </h2>
@@ -264,6 +261,14 @@ const Login = () => {
               </button>
 
             </form>
+
+            <p className="mt-6 text-center text-sm text-gray-600">
+              Chưa có tài khoản?{" "}
+              <button type="button" disabled={isSubmitting} onClick={() => setIsRegistering(true)} className="font-semibold text-green-700 hover:underline disabled:opacity-60">
+                Đăng ký ngay
+              </button>
+            </p>
+            </>}
 
           </div>
 
