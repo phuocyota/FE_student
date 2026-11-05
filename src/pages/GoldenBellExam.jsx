@@ -12,6 +12,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
+import GoldenBellExamCelebration from "../components/GoldenBellExam/GoldenBellExamCelebration";
+import { getGoldenBellWinner } from "../utils/goldenBellWinner";
+import GoldenBellWinnerBadge from "../components/GoldenBell/GoldenBellWinnerBadge";
+import StudentAvatar from "../components/GoldenBell/StudentAvatar";
+import { openGoldenBellRanking, withEliminationHistory } from "../utils/goldenBellRanking";
+import { demoRoomKey, joinDemoRoom, readDemoRoom, readDemoStudent } from "../utils/demoRegistration";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -33,6 +39,8 @@ const getRemainingSeconds = (room) => {
 };
 
 const createStudentId = () => {
+  const demoStudent = readDemoStudent();
+  if (demoStudent) return demoStudent.id;
   const authenticatedUserId = localStorage.getItem("userId");
   if (authenticatedUserId) {
     sessionStorage.setItem("golden_bell_student_id", authenticatedUserId);
@@ -52,6 +60,8 @@ const createStudentId = () => {
 };
 
 const getDefaultStudentName = () => {
+  const demoStudent = readDemoStudent();
+  if (demoStudent) return demoStudent.fullName;
   const fullName = localStorage.getItem("fullName")?.trim();
   if (fullName) return fullName;
 
@@ -85,6 +95,7 @@ const getInitialRoom = (roomKey, roomId) => {
 
 const GoldenBellLobby = () => {
   const navigate = useNavigate();
+  const [profile] = useState(readDemoStudent);
   const [roomCode, setRoomCode] = useState("");
 
   const handleSubmit = (event) => {
@@ -96,7 +107,12 @@ const GoldenBellLobby = () => {
       return;
     }
 
-    navigate(`/golden-bell/${normalizedCode}`);
+    try {
+      if (profile) joinDemoRoom(normalizedCode, profile);
+      navigate(`/golden-bell/${normalizedCode}`);
+    } catch (error) {
+      toast.error(error.message || "Không thể lưu phòng demo. Vui lòng kiểm tra bộ nhớ trình duyệt.");
+    }
   };
 
   return (
@@ -109,6 +125,11 @@ const GoldenBellLobby = () => {
         <p className="mt-2 text-sm text-gray-600">
           Nhập mã phòng giáo viên đang hiển thị để vào sân thi đấu.
         </p>
+        {profile && <div className="mt-5 flex items-center gap-3 rounded-xl bg-green-50 p-3 text-left">
+          <StudentAvatar student={profile} />
+          <div><p className="font-bold text-green-800">{profile.fullName}</p><p className="text-sm text-gray-600">{profile.className} · {profile.schoolName}</p></div>
+        </div>}
+        {profile && <p className="mt-3 text-sm text-amber-800">Phòng demo: nhập mã 6 chữ số bất kỳ. Dữ liệu được lưu trên trình duyệt này.</p>}
 
         <form onSubmit={handleSubmit} className="mt-7 space-y-4">
           <input
@@ -136,14 +157,16 @@ const GoldenBellLobby = () => {
 
 const GoldenBellRoom = ({ roomId }) => {
   const navigate = useNavigate();
-  const roomKey = `golden_bell_room_${roomId}`;
+  const [profile] = useState(readDemoStudent);
+  const isDemo = Boolean(profile);
+  const roomKey = isDemo ? demoRoomKey(roomId) : `golden_bell_room_${roomId}`;
 
   const [question, setQuestion] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [questionNo, setQuestionNo] = useState(0);
   const [studentId] = useState(createStudentId);
   const [studentName] = useState(getDefaultStudentName);
-  const [room, setRoom] = useState(() => getInitialRoom(roomKey, roomId));
+  const [room, setRoom] = useState(() => isDemo ? readDemoRoom(roomId) : getInitialRoom(roomKey, roomId));
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
     getRemainingSeconds(room)
   );
@@ -161,13 +184,30 @@ const GoldenBellRoom = ({ roomId }) => {
   }, [question]);
 
   const currentStudent = room.students.find((student) => student.id === studentId);
+  const winner = getGoldenBellWinner(room);
+  const isCurrentStudentWinner = winner?.id === studentId;
   const hasSelected = Boolean(selectedAnswer);
   const isCorrect = Boolean(selectedAnswer?.isCorrect);
   const isEliminated = currentStudent?.status === "eliminated";
-  const isQuestionClosed = Boolean(room.questionEndedAt);
+  const isWaitingForNextQuestion = !isEliminated && (currentStudent?.resumeFromQuestionNo || 0) > (room.questionNo || 0);
+  const isQuestionClosed = Boolean(room.questionEndedAt) || Boolean(room.currentQuestion && remainingSeconds <= 0) || room.status === "FINISHED" || room.status === "EXPIRED";
+  const previousStudentStatusRef = useRef(currentStudent?.status);
+  const handledRevivalRef = useRef(currentStudent?.revivalCount || 0);
+
+  useEffect(() => {
+    const revision = currentStudent?.revivalCount || 0;
+    const wasRevived = revision > handledRevivalRef.current || (previousStudentStatusRef.current === "eliminated" && currentStudent?.status === "active");
+    handledRevivalRef.current = revision;
+    previousStudentStatusRef.current = currentStudent?.status;
+    if (!wasRevived) return;
+    setSelectedAnswer(null);
+    eliminationNoticeRef.current = "";
+    toast.dismiss(`golden-bell-elimination-${studentId}`);
+    toast.success("Bạn đã được giáo viên hồi sinh và trở lại sân chơi!", { duration: 5000 });
+  }, [currentStudent?.revivalCount, currentStudent?.status, studentId]);
   const joinedCount = room.students.length;
   const passedCount = room.students.filter(
-    (student) => student.status === "passed" && student.lastQuestionNo === questionNo
+    (student) => student.status === "passed" && student.lastQuestionNo === questionNo && (student.resumeFromQuestionNo || 0) <= questionNo
   ).length;
   const eliminatedCount = room.students.filter(
     (student) => student.status === "eliminated"
@@ -175,6 +215,7 @@ const GoldenBellRoom = ({ roomId }) => {
   const studentStatusLabel = currentStudent
     ? currentStudent.status === "eliminated"
       ? "Đã hạ bảng"
+      : isWaitingForNextQuestion ? "Đã hồi sinh · Chờ câu tiếp theo"
       : currentStudent.status === "passed"
         ? "Đã vượt qua câu này"
         : "Đang trong sân"
@@ -182,6 +223,7 @@ const GoldenBellRoom = ({ roomId }) => {
 
   const saveRoom = useCallback(
     (nextRoom, { emitSocket = true } = {}) => {
+      nextRoom = withEliminationHistory(roomRef.current, nextRoom);
       roomRef.current = nextRoom;
       setRoom(nextRoom);
       localStorage.setItem(roomKey, JSON.stringify(nextRoom));
@@ -197,10 +239,14 @@ const GoldenBellRoom = ({ roomId }) => {
   );
 
   useEffect(() => {
-    const nextRoom = getInitialRoom(roomKey, roomId);
-    roomRef.current = nextRoom;
-    setRoom(nextRoom);
-  }, [roomId, roomKey]);
+    try {
+      const nextRoom = profile ? joinDemoRoom(roomId, profile) : getInitialRoom(roomKey, roomId);
+      roomRef.current = nextRoom;
+      setRoom(nextRoom);
+    } catch (error) {
+      setRoomError(error.message || "Không thể vào phòng demo.");
+    }
+  }, [roomId, roomKey, profile]);
 
   useEffect(() => {
     const handleStorage = (event) => {
@@ -221,6 +267,10 @@ const GoldenBellRoom = ({ roomId }) => {
   }, [roomKey]);
 
   useEffect(() => {
+    if (isDemo) {
+      setSocketStatus("demo");
+      return;
+    }
     const socket = createAppSocket();
     socketRef.current = socket;
     setSocketStatus("connecting");
@@ -234,6 +284,7 @@ const GoldenBellRoom = ({ roomId }) => {
           student: {
             id: studentId,
             name: studentName,
+            avatar: roomRef.current.students.find((student) => student.id === studentId)?.avatar || "",
             joinedAt: new Date().toISOString(),
           },
         },
@@ -254,9 +305,24 @@ const GoldenBellRoom = ({ roomId }) => {
     };
 
     const handleRoomState = (nextRoom) => {
-      if (!nextRoom?.students) return;
+      if (!nextRoom) return;
+      nextRoom = withEliminationHistory(roomRef.current, nextRoom);
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
+        const finalRoom = {
+          ...roomRef.current,
+          ...nextRoom,
+          students: nextRoom.students?.length ? nextRoom.students : roomRef.current.students,
+          questionNo: nextRoom.questionNo || roomRef.current.questionNo,
+        };
+        roomRef.current = finalRoom;
+        setRoom(finalRoom);
+        setRemainingSeconds(0);
+        localStorage.setItem(roomKey, JSON.stringify(finalRoom));
+        if (nextRoom.status === "FINISHED") {
+          setRoomError("");
+          return;
+        }
         setRoomError(
           nextRoom.status === "EXPIRED"
             ? "Phòng đã hết hạn sau 24 giờ."
@@ -265,6 +331,7 @@ const GoldenBellRoom = ({ roomId }) => {
         return;
       }
 
+      if (!nextRoom.students) return;
       roomRef.current = nextRoom;
       setRoom(nextRoom);
       setRemainingSeconds(getRemainingSeconds(nextRoom));
@@ -285,7 +352,7 @@ const GoldenBellRoom = ({ roomId }) => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, roomKey, studentId, studentName]);
+  }, [roomId, roomKey, studentId, studentName, isDemo]);
 
   useEffect(() => {
     const currentQuestionId = room.currentQuestion?.id;
@@ -345,8 +412,8 @@ const GoldenBellRoom = ({ roomId }) => {
     if (eliminationNoticeRef.current === noticeKey) return;
 
     eliminationNoticeRef.current = noticeKey;
-    toast.error("Rất tiếc, bạn đã bị loại.", { duration: 6000 });
-  }, [currentStudent, isEliminated, roomId]);
+    toast.error("Rất tiếc, bạn đã bị loại.", { id: `golden-bell-elimination-${studentId}`, duration: 6000 });
+  }, [currentStudent, isEliminated, roomId, studentId]);
 
   const updateCurrentStudent = useCallback(
     (updater) => {
@@ -376,7 +443,7 @@ const GoldenBellRoom = ({ roomId }) => {
       return;
     }
 
-    if (isQuestionClosed) {
+    if (isQuestionClosed || isWaitingForNextQuestion) {
       toast.error("Đã hết thời gian trả lời câu hỏi này.");
       return;
     }
@@ -396,6 +463,8 @@ const GoldenBellRoom = ({ roomId }) => {
         ...student,
         status: "eliminated",
         eliminatedReason: "wrong-answer",
+        eliminatedAt: new Date().toISOString(),
+        eliminatedQuestionNo: questionNo,
         lastQuestionNo: questionNo,
         wrongCount: (student.wrongCount || 0) + 1,
       }));
@@ -456,6 +525,9 @@ const GoldenBellRoom = ({ roomId }) => {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-green-50 via-gray-100 to-white">
+      <GoldenBellExamCelebration room={room} roomId={roomId} studentId={studentId} />
+      {isDemo && <div className="bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">Phòng demo · Đồng bộ giữa các tab trên cùng trình duyệt. <a className="font-semibold underline" href={`/teacher/demo?room=${roomId}`} target="_blank" rel="noreferrer">Mở giao diện giáo viên demo</a></div>}
+      {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Giáo viên đã kết thúc phòng thi. Bạn có thể xem lại kết quả và xếp hạng.</p>}
       <div className="max-w-6xl mx-auto px-4 py-5 md:py-8">
         <div className="mb-5 overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">
           <div className="bg-green-700 px-5 py-4 text-white md:px-6">
@@ -487,7 +559,7 @@ const GoldenBellRoom = ({ roomId }) => {
                         ? "Socket online"
                         : socketStatus === "connecting"
                           ? "Đang kết nối"
-                          : "Local fallback"}
+                          : socketStatus === "demo" ? "Demo" : "Local fallback"}
                     </span>
                   </div>
                   <h1 className="mt-1 text-2xl font-normal md:text-3xl">
@@ -540,11 +612,14 @@ const GoldenBellRoom = ({ roomId }) => {
               </div>
 
               {currentStudent ? (
-                <div className="rounded-lg border border-green-200 bg-white px-4 py-3">
+                <div className={`rounded-lg border px-4 py-3 ${isCurrentStudentWinner ? "border-yellow-400 bg-gradient-to-b from-yellow-50 to-amber-100" : "border-green-200 bg-white"}`}>
                   <p className="text-sm text-gray-600">Thí sinh</p>
-                  <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <span className="font-bold text-gray-900">{currentStudent.name}</span>
-                    <span
+                  <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+                    <div className="flex w-32 max-w-full flex-col items-center gap-2 text-center">
+                      <StudentAvatar student={currentStudent} className="h-20 w-20" />
+                      <span className="w-full break-words font-bold text-gray-900">{currentStudent.name}</span>
+                    </div>
+                    {isCurrentStudentWinner ? <GoldenBellWinnerBadge /> : <span
                       className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${
                         currentStudent.status === "eliminated"
                           ? "bg-red-100 text-red-700"
@@ -554,7 +629,7 @@ const GoldenBellRoom = ({ roomId }) => {
                       }`}
                     >
                       {studentStatusLabel}
-                    </span>
+                    </span>}
                   </div>
                 </div>
               ) : (
@@ -574,29 +649,28 @@ const GoldenBellRoom = ({ roomId }) => {
                 {room.students.length === 0 ? (
                   <p className="py-4 text-center text-sm text-gray-500">Chưa có học sinh join.</p>
                 ) : (
-                  room.students.map((student, index) => (
+                  room.students.map((student) => (
                     <div
                       key={student.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2"
+                      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${winner?.id === student.id ? "border-yellow-400 bg-yellow-50" : "border-gray-200"}`}
                     >
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-black text-green-700">
-                          {index + 1}
-                        </span>
+                        <StudentAvatar student={student} className="h-9 w-9" />
+                        {winner?.id === student.id && <GoldenBellWinnerBadge iconOnly />}
                         <span className="truncate text-sm font-semibold text-gray-800">
                           {student.name}
                         </span>
                       </div>
                       <span
                         className={`text-xs font-bold ${
-                          student.status === "passed"
+                          winner?.id === student.id ? "text-amber-800" : student.status === "passed"
                             ? "text-green-700"
                             : student.status === "eliminated"
                               ? "text-red-600"
                               : "text-gray-500"
                         }`}
                       >
-                        {student.status === "passed"
+                        {winner?.id === student.id ? "Chiến thắng" : student.status === "passed"
                           ? "Qua"
                           : student.status === "eliminated"
                             ? "Hạ bảng"
@@ -653,7 +727,7 @@ const GoldenBellRoom = ({ roomId }) => {
                         <button
                           key={answer.id}
                           type="button"
-                          disabled={hasSelected || isEliminated || isQuestionClosed}
+                          disabled={hasSelected || isEliminated || isQuestionClosed || isWaitingForNextQuestion}
                           onClick={() => handleSelectAnswer(answer)}
                           className={`min-h-24 w-full rounded-xl border p-4 text-left shadow-sm transition ${answerClass}`}
                         >
@@ -674,12 +748,14 @@ const GoldenBellRoom = ({ roomId }) => {
             )}
           </div>
 
-          <div className="flex min-h-16 items-center border-t border-gray-200 bg-gray-50 px-5 py-4">
+          <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-5 py-4">
             {isEliminated ? (
               <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
                 <XCircle size={18} />
                 Rất tiếc, bạn đã bị loại và không thể tiếp tục trả lời.
               </div>
+            ) : isWaitingForNextQuestion ? (
+              <p className="text-sm font-semibold text-green-700">Bạn đã được hồi sinh. Chờ giáo viên phát câu tiếp theo để tiếp tục thi đấu.</p>
             ) : hasSelected ? (
               <div
                 className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
@@ -694,6 +770,10 @@ const GoldenBellRoom = ({ roomId }) => {
                 Chọn một đáp án sau khi giáo viên phát câu hỏi.
               </p>
             )}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => navigate("/")} className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800">Trở về trang chủ</button>
+              <button type="button" onClick={() => openGoldenBellRanking(navigate, room, `/golden-bell/${roomId}`)} className="rounded-xl border border-green-700 px-4 py-2 text-sm font-bold text-green-700 hover:bg-green-50">Xếp hạng</button>
+            </div>
           </div>
         </div>
       </div>

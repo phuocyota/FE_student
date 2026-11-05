@@ -27,6 +27,12 @@ import {
   getRandomQuestion,
 } from "../api/questionBank";
 import { createAppSocket } from "../api/socket";
+import TeacherGoldenBellCelebration from "../components/TeacherGoldenBell/TeacherGoldenBellCelebration";
+import { getGoldenBellWinner } from "../utils/goldenBellWinner";
+import GoldenBellWinnerBadge from "../components/GoldenBell/GoldenBellWinnerBadge";
+import StudentAvatar from "../components/GoldenBell/StudentAvatar";
+import { openGoldenBellRanking, podiumSelectionsKey, withEliminationHistory } from "../utils/goldenBellRanking";
+import { reviveGoldenBellStudentOnServer } from "../api/goldenBell";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -125,6 +131,7 @@ const TeacherGoldenBell = () => {
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isEndingRoom, setIsEndingRoom] = useState(false);
+  const [revivingStudentId, setRevivingStudentId] = useState(null);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isOutOfQuestions, setIsOutOfQuestions] = useState(false);
 
@@ -133,10 +140,10 @@ const TeacherGoldenBell = () => {
   const questionBankMenuRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
-  const activeStudents = students.filter((student) => student.status === "active");
+  const activeStudents = students.filter((student) => student.status === "active" || (student.resumeFromQuestionNo || 0) > room.questionNo);
   const passedStudents = students.filter(
     (student) =>
-      student.status === "passed" && student.lastQuestionNo === room.questionNo
+      student.status === "passed" && student.lastQuestionNo === room.questionNo && (student.resumeFromQuestionNo || 0) <= room.questionNo
   );
   const eliminatedStudents = students.filter(
     (student) => student.status === "eliminated"
@@ -150,6 +157,8 @@ const TeacherGoldenBell = () => {
   }, [room.currentQuestion]);
 
   const isAuthenticated = Boolean(teacher.token);
+  const winner = getGoldenBellWinner(room);
+  const isRoomFinished = room.status === "FINISHED" || room.status === "EXPIRED";
   const questionBankName =
     questionBankInfo.id === questionBankId
       ? questionBankInfo.name
@@ -172,6 +181,7 @@ const TeacherGoldenBell = () => {
 
   const syncRoom = useCallback(
     (nextRoom) => {
+      nextRoom = withEliminationHistory(roomRef.current, nextRoom);
       roomRef.current = nextRoom;
       setRoom(nextRoom);
       if (!roomId) return;
@@ -364,8 +374,18 @@ const TeacherGoldenBell = () => {
 
     const handleRoomState = (nextRoom) => {
       if (!nextRoom) return;
+      nextRoom = withEliminationHistory(roomRef.current, nextRoom);
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
+        if (nextRoom.status === "FINISHED" &&
+          (getGoldenBellWinner(nextRoom) || getGoldenBellWinner(roomRef.current))) {
+          const finalRoom = { ...roomRef.current, ...nextRoom };
+          if (!getGoldenBellWinner(finalRoom)) finalRoom.students = roomRef.current.students;
+          if (!finalRoom.questionNo) finalRoom.questionNo = roomRef.current.questionNo;
+          roomRef.current = finalRoom;
+          setRoom(finalRoom);
+          return;
+        }
         setRoom(createEmptyRoom("", questionBankId));
         navigate(`/teacher/${questionBankId}`, { replace: true });
         if (nextRoom.status === "EXPIRED") {
@@ -400,6 +420,12 @@ const TeacherGoldenBell = () => {
       socketRef.current = null;
     };
   }, [navigate, questionBankId, roomId, teacher.token]);
+
+  const markRoomFinished = useCallback(() => {
+    const finalRoom = { ...roomRef.current, status: "FINISHED" };
+    roomRef.current = finalRoom;
+    setRoom(finalRoom);
+  }, []);
 
   const handleCreateRoom = () => {
     if (!questionBankId) {
@@ -482,6 +508,7 @@ const TeacherGoldenBell = () => {
   };
 
   const fetchQuestion = async ({ reset = false } = {}) => {
+    if (isRoomFinished || getGoldenBellWinner(roomRef.current)) return;
     setIsLoadingQuestion(true);
     setIsOutOfQuestions(false);
 
@@ -574,6 +601,7 @@ const TeacherGoldenBell = () => {
   };
 
   const handleResetRoom = () => {
+    if (isRoomFinished || getGoldenBellWinner(roomRef.current)) return;
     syncRoom({
       ...createEmptyRoom(roomId, questionBankId),
       students: students.map((student) => ({
@@ -586,6 +614,27 @@ const TeacherGoldenBell = () => {
     });
     setIsOutOfQuestions(false);
     toast.success("Đã reset phòng");
+  };
+
+  const handleReviveStudent = async (studentId) => {
+    if (revivingStudentId) return;
+    if (!socketRef.current?.connected) {
+      toast.error("Cần kết nối phòng để hồi sinh thí sinh.");
+      return;
+    }
+    setRevivingStudentId(studentId);
+    try {
+      const nextRoom = await reviveGoldenBellStudentOnServer(socketRef.current, roomRef.current, studentId);
+      localStorage.setItem(podiumSelectionsKey(roomId, false), "{}");
+      roomRef.current = nextRoom;
+      setRoom(nextRoom);
+      const student = nextRoom.students.find((item) => item.id === studentId);
+      toast.success(`Đã hồi sinh ${student.name}. Thí sinh được tiếp tục thi đấu.`);
+    } catch (error) {
+      toast.error(error.message || "Không thể hồi sinh thí sinh.");
+    } finally {
+      setRevivingStudentId(null);
+    }
   };
 
   const handleEndRoom = () => {
@@ -608,6 +657,10 @@ const TeacherGoldenBell = () => {
           return;
         }
 
+        if (getGoldenBellWinner(roomRef.current)) {
+          markRoomFinished();
+          return;
+        }
         setRoom(createEmptyRoom("", questionBankId));
         navigate(`/teacher/${questionBankId}`, { replace: true });
         toast.success(`Đã kết thúc phòng ${roomId}`);
@@ -709,6 +762,7 @@ const TeacherGoldenBell = () => {
               {isLoggingIn ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
+          {!import.meta.env.VITE_STUDENT_REGISTER_URL && <button type="button" onClick={() => navigate(`/teacher/demo${roomId ? `?room=${roomId}` : ""}`)} className="mt-4 w-full rounded-lg border border-green-700 px-4 py-2 font-semibold text-green-700 hover:bg-green-50">Xem phòng đăng ký demo</button>}
         </div>
       </div>
     );
@@ -727,6 +781,8 @@ const TeacherGoldenBell = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <TeacherGoldenBellCelebration room={room} roomId={roomId} />
+      {isRoomFinished && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng {roomId} đã kết thúc. Thầy/Cô có thể tạo phòng khác để bắt đầu cuộc thi mới.</p>}
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -923,6 +979,7 @@ const TeacherGoldenBell = () => {
                   <h2 className="text-lg font-bold text-gray-900">Nội dung câu hỏi</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <button type="button" disabled={!roomId} onClick={() => openGoldenBellRanking(navigate, { ...room, questionBankName, teacherName: teacher.name }, `/teacher/${questionBankId}?room=${roomId}`)} className="inline-flex items-center gap-2 rounded-lg border border-green-300 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50 disabled:opacity-60"><Trophy size={16} />Xếp hạng</button>
                   <button
                     type="button"
                     onClick={handleCopyStudentLink}
@@ -944,7 +1001,7 @@ const TeacherGoldenBell = () => {
                   <button
                     type="button"
                     onClick={handleResetRoom}
-                    disabled={!roomId}
+                    disabled={!roomId || isRoomFinished || Boolean(getGoldenBellWinner(room))}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     <RotateCcw size={16} />
@@ -953,7 +1010,7 @@ const TeacherGoldenBell = () => {
                   <button
                     type="button"
                     onClick={handleEndRoom}
-                    disabled={!roomId || isEndingRoom}
+                    disabled={!roomId || isEndingRoom || isRoomFinished}
                     className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                   >
                     {isEndingRoom ? (
@@ -965,7 +1022,7 @@ const TeacherGoldenBell = () => {
                   </button>
                   <button
                     type="button"
-                    disabled={!roomId || isLoadingQuestion}
+                    disabled={!roomId || isLoadingQuestion || isRoomFinished || Boolean(getGoldenBellWinner(room))}
                     onClick={() => fetchQuestion()}
                     className="inline-flex items-center gap-2 rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700 disabled:opacity-60"
                   >
@@ -1046,16 +1103,20 @@ const TeacherGoldenBell = () => {
                     {students.map((student) => (
                       <div
                         key={student.id}
-                        className="rounded-lg border border-gray-200 p-3"
+                        className={`rounded-lg border p-3 ${winner?.id === student.id ? "border-yellow-400 bg-gradient-to-b from-yellow-50 to-amber-100" : "border-gray-200"}`}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <StudentAvatar student={student} />
+                            <div>
                             <p className="font-semibold text-gray-900">{student.name}</p>
+                            {(student.className || student.schoolName) && <p className="text-xs text-gray-500">{[student.className, student.schoolName].filter(Boolean).join(" · ")}</p>}
                             <p className="text-xs text-gray-500">
                               Câu cuối: {student.lastQuestionNo || 0}
                             </p>
+                            </div>
                           </div>
-                          <span
+                          {winner?.id === student.id ? <GoldenBellWinnerBadge /> : <span
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${
                               student.status === "passed"
                                 ? "bg-green-100 text-green-700"
@@ -1071,20 +1132,21 @@ const TeacherGoldenBell = () => {
                             ) : (
                               <Users size={14} />
                             )}
-                            {student.status === "passed"
+                            {(student.resumeFromQuestionNo || 0) > room.questionNo ? "Đã hồi sinh · Chờ câu tiếp theo" : student.status === "passed"
                               ? "Qua"
                               : student.status === "eliminated"
                                 ? "Bị loại"
                                 : "Đang thi"}
-                          </span>
+                          </span>}
                         </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        <div className="mt-2 grid grid-cols-[1fr_1fr_auto] items-center gap-2 text-sm">
                           <div className="rounded bg-green-50 px-2 py-1 text-green-700">
                             Đúng: {student.correctCount || 0}
                           </div>
                           <div className="rounded bg-red-50 px-2 py-1 text-red-600">
                             Sai: {student.wrongCount || 0}
                           </div>
+                          {student.status === "eliminated" && <button type="button" aria-label={`Hồi sinh ${student.name}`} onClick={() => handleReviveStudent(student.id)} disabled={isRoomFinished || socketStatus !== "connected" || Boolean(revivingStudentId)} className="inline-flex items-center justify-center gap-1 rounded border border-green-300 bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><RotateCcw size={13} aria-hidden="true" />{revivingStudentId === student.id ? "Đang hồi sinh..." : "Hồi sinh"}</button>}
                         </div>
                       </div>
                     ))}

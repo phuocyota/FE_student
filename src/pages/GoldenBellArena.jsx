@@ -3,6 +3,9 @@ import { Bell, CheckCircle2, Gift, Users } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
+import GoldenBellArenaCelebration from "../components/GoldenBellArena/GoldenBellArenaCelebration";
+import GoldenBellArenaStudentCard from "../components/GoldenBellArena/GoldenBellArenaStudentCard";
+import { getGoldenBellWinner } from "../utils/goldenBellWinner";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -37,23 +40,6 @@ const createEmptyRoom = (roomId) => ({
   students: [],
 });
 
-const getSeatColor = (index) => {
-  const colors = [
-    "bg-rose-500",
-    "bg-pink-500",
-    "bg-blue-500",
-    "bg-violet-500",
-    "bg-emerald-500",
-    "bg-amber-400",
-    "bg-indigo-500",
-    "bg-teal-400",
-    "bg-orange-500",
-    "bg-fuchsia-500",
-  ];
-
-  return colors[index % colors.length];
-};
-
 const GoldenBellArena = () => {
   const { id } = useParams();
   const roomId = (id || "").trim().toUpperCase();
@@ -64,6 +50,7 @@ const GoldenBellArena = () => {
   const socketRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
+  const winner = getGoldenBellWinner(room);
   const activeCount = students.filter(
     (student) => student.status !== "eliminated"
   ).length;
@@ -115,10 +102,14 @@ const GoldenBellArena = () => {
             ? "Phòng đã hết hạn sau 24 giờ."
             : "Giáo viên đã kết thúc phòng thi đấu."
         );
-        setRoom({
-          ...createEmptyRoom(roomId),
-          status: nextRoom.status,
-        });
+        setRoom((previousRoom) => ({
+          ...previousRoom,
+          ...nextRoom,
+          students: nextRoom.students?.length ? toArray(nextRoom.students) : previousRoom.students,
+          questionNo: nextRoom.questionNo || previousRoom.questionNo,
+          questionEndedAt: nextRoom.questionEndedAt || new Date().toISOString(),
+        }));
+        setRemainingSeconds(0);
         return;
       }
 
@@ -215,34 +206,36 @@ const GoldenBellArena = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 via-gray-100 to-white text-gray-900">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-8">
-        <header className="mb-6 flex flex-col gap-4 border-b border-green-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+      <GoldenBellArenaCelebration room={room} roomId={roomId} />
+      {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng thi đã kết thúc.</p>}
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 sm:py-8">
+        <header className="mb-6 flex flex-col items-center gap-5 border-b border-green-200 pb-6 text-center">
           <div>
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-green-700">
+            <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wide text-green-700 sm:text-sm">
               <Bell size={18} />
               Đấu trường kiến thức Rung chuông vàng
             </div>
-            <h1 className="mt-2 text-3xl font-normal tracking-tight text-gray-900">
-              Sàn thi đấu trực tiếp
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+              Sàn thi đấu trực tuyến
             </h1>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-lg border border-green-200 bg-white px-5 py-3 shadow-sm">
-              <p className="text-xs font-bold uppercase text-gray-500">Cau hien tai</p>
+          <div className="grid w-full max-w-xl grid-cols-3 gap-2 text-center sm:gap-3">
+            <div className="rounded-xl border border-green-200 bg-white px-2 py-3 shadow-sm sm:px-5">
+              <p className="text-xs font-bold uppercase text-gray-500">Câu hiện tại</p>
               <p className="text-2xl font-black text-green-700">
                 {room.questionNo || 0}
               </p>
             </div>
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-5 py-3 shadow-sm">
-              <p className="text-xs font-bold uppercase text-gray-500">Cuu tro</p>
+            <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-2 py-3 shadow-sm sm:px-5">
+              <p className="text-xs font-bold uppercase text-gray-500">Cứu trợ</p>
               <p className="flex items-center justify-center gap-2 text-sm font-bold text-yellow-700">
                 <Gift size={16} />
-                San sang
+                Sẵn sàng
               </p>
             </div>
-            <div className="rounded-lg border border-red-200 bg-white px-5 py-3 shadow-sm">
-              <p className="text-xs font-bold uppercase text-gray-500">Dong ho</p>
+            <div className="rounded-xl border border-red-200 bg-white px-2 py-3 shadow-sm sm:px-5">
+              <p className="text-xs font-bold uppercase text-gray-500">Đồng hồ</p>
               <p className="font-mono text-2xl font-black text-red-600">
                 00:{String(remainingSeconds).padStart(2, "0")}
               </p>
@@ -250,10 +243,10 @@ const GoldenBellArena = () => {
           </div>
         </header>
 
-        <main className="flex-1">
-          <section className="mb-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <main className="grid flex-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+          <section aria-label="Nội dung câu hỏi" className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-5 inline-flex rounded-md bg-yellow-400 px-4 py-2 text-xs font-black uppercase tracking-wide text-gray-900">
-              Linh vuc: Trac nghiem bon phuong an
+              Lĩnh vực: Trắc nghiệm
             </div>
 
             {room.currentQuestion ? (
@@ -313,32 +306,34 @@ const GoldenBellArena = () => {
                 <p className="mt-2 text-gray-500">
                   {roomError
                     ? "Vui lòng mở lại sân thi đấu từ bảng điều khiển giáo viên."
-                    : `Màn hình sẽ cập nhật realtime theo phòng ${room.code}.`}
+                    : `Màn hình sẽ cập nhật trực tiếp theo phòng ${room.code}.`}
                 </p>
               </div>
             )}
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex flex-col gap-3 border-b border-gray-200 pb-4 md:flex-row md:items-center md:justify-between">
+          <section aria-label="Danh sách thí sinh" className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex flex-col gap-3 border-b border-gray-200 pb-4">
               <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-green-700">
                 <Users size={18} />
-                Thí sinh trong phòng:
+                Thí sinh trong phòng
+              </div>
+              <div className="flex items-center gap-2 text-sm font-bold">
                 <span className="text-gray-900">{activeCount}</span>
                 <span className="text-gray-400">/</span>
                 <span className="text-gray-900">{students.length}</span>
                 <span className="text-gray-900">còn trụ</span>
               </div>
 
-              <div className="flex gap-2 text-xs font-bold">
-                <span className="rounded border border-green-200 bg-green-50 px-3 py-1 text-green-700">
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <span className="rounded border border-green-200 bg-green-50 px-2 py-1 text-green-700">
                   Đang đấu
                 </span>
-                <span className="rounded border border-gray-200 bg-gray-100 px-3 py-1 text-gray-700">
+                <span className="rounded border border-gray-200 bg-gray-100 px-2 py-1 text-gray-700">
                   Hạ bảng: {eliminatedCount}
                 </span>
-                <span className="rounded border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">
-                  {socketStatus === "connected" ? "Online" : "Dang ket noi"}
+                <span className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">
+                  {socketStatus === "connected" ? "Trực tuyến" : socketStatus === "connecting" ? "Đang kết nối" : "Mất kết nối"}
                 </span>
               </div>
             </div>
@@ -349,36 +344,14 @@ const GoldenBellArena = () => {
                 <p className="text-sm font-medium">Chưa có học sinh tham gia phòng.</p>
               </div>
             ) : (
-              <div className="grid max-h-[38vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10">
-                {students.map((student, index) => {
-                  const isEliminated = student.status === "eliminated";
-                  const isPassed = student.status === "passed";
-
-                  return (
-                    <div
+              <div className="grid max-h-[65vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 lg:grid-cols-2">
+                {students.map((student) => (
+                    <GoldenBellArenaStudentCard
                       key={student.id}
-                      className={`rounded-lg border px-3 py-3 text-center ${
-                        isEliminated
-                          ? "border-gray-200 bg-gray-100 opacity-50"
-                          : isPassed
-                            ? "border-green-400 bg-green-50"
-                            : "border-gray-200 bg-white"
-                      }`}
-                    >
-                      <div
-                        className={`mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white ${getSeatColor(index)}`}
-                      >
-                        {index + 1}
-                      </div>
-                      <div className="truncate text-xs font-normal text-gray-900">
-                        {student.name}
-                      </div>
-                      <div className="mt-1 text-[10px] font-bold uppercase text-gray-500">
-                        {isEliminated ? "Hạ bảng" : "Đang đấu"}
-                      </div>
-                    </div>
-                  );
-                })}
+                      student={student}
+                      isWinner={winner?.id === student.id}
+                    />
+                ))}
               </div>
             )}
           </section>

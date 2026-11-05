@@ -1,11 +1,12 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { readDemoStudent } from "../utils/demoRegistration";
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowDemo = false }) => {
   const location = useLocation();
   const token = localStorage.getItem("accessToken");
 
-  if (!token) {
+  if (!token && !(allowDemo && readDemoStudent())) {
     return (
       <Navigate
         to="/login"
