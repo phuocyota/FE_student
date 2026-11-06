@@ -5,8 +5,8 @@ import RankingParticipants from "./RankingParticipants";
 import useGoldenBellRankingRoom from "../../hooks/useGoldenBellRankingRoom";
 import { getRankingSelectionView } from "../../utils/goldenBellRanking";
 
-export default function RankingRoom({ roomId, isDemo, snapshot, returnTo, canManage }) {
-  const { room, connection, error, choosePodiumRank } = useGoldenBellRankingRoom(roomId, isDemo, snapshot, canManage);
+export default function RankingRoom({ roomId, snapshot, returnTo, canManage }) {
+  const { room, connection, error, choosePodiumRank } = useGoldenBellRankingRoom(roomId, snapshot, canManage);
   const { ranking, participants, secondResolved, assignable } = useMemo(() => getRankingSelectionView(room), [room]);
 
   return (
@@ -14,7 +14,7 @@ export default function RankingRoom({ roomId, isDemo, snapshot, returnTo, canMan
       <RankingHeader room={room} connection={connection} returnTo={returnTo} />
       {error && <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{error}</p>}
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
-        <RankingParticipants ranking={participants} canManage={canManage} onSelect={choosePodiumRank} secondResolved={secondResolved} canChooseRanks={assignable[2] || assignable[3]} disabled={!isDemo && connection !== "connected"} />
+        <RankingParticipants ranking={participants} canManage={canManage} onSelect={choosePodiumRank} secondResolved={secondResolved} canChooseRanks={assignable[2] || assignable[3]} disabled={connection !== "connected"} />
         <div className="min-w-0 space-y-5">
           <RankingPodium ranking={ranking} />
         </div>

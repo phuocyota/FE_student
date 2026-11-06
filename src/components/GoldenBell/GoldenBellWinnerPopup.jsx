@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Trophy, X } from "lucide-react";
-import { launchFireworks, playApplause, prepareApplause } from "./celebrationEffects";
+import { launchFireworks, playApplause } from "./celebrationEffects";
 import { getGoldenBellWinner } from "../../utils/goldenBellWinner";
 import StudentAvatar from "./StudentAvatar";
 import { openGoldenBellRanking } from "../../utils/goldenBellRanking";
@@ -25,7 +25,6 @@ const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (AudioContext) {
       audioRef.current = new AudioContext();
-      void prepareApplause(audioRef.current).catch(() => {});
     }
     const unlockAudio = () => {
       if (!audioRef.current) return;

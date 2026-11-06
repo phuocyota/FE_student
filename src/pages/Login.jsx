@@ -6,9 +6,7 @@ import logo from "../assets/logo_ichi.png";
 import toast from "react-hot-toast";
 import cancelIcon from "../assets/cancle.png";
 import { loginStudent } from "../api/auth";
-import { getUserById } from "../api/student";
-import StudentRegistration from "../components/StudentRegistration";
-import { clearActiveDemoStudent } from "../utils/demoRegistration";
+import { getCurrentUser } from "../api/student";
 
 const Login = () => {
   // localStorage.clear();
@@ -26,7 +24,6 @@ const Login = () => {
   });
 
   const [error, setError] = useState("");
-  const [isRegistering, setIsRegistering] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ⭐ kiểm tra token từ WebView2
@@ -150,21 +147,26 @@ const Login = () => {
       }
 
       // 1️⃣ lưu token trước
-      clearActiveDemoStudent();
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userType", userType);
 
       // 2️⃣ gọi API lấy thông tin user
       try {
-        const res = await getUserById(userId);
-        const userData = res.data;
+        const res = await getCurrentUser();
+        const userData = res.data ?? res;
 
         localStorage.setItem("fullName", userData.fullName || "");
         localStorage.setItem("user", userData.userName || form.id);
+        localStorage.setItem("studentAvatar", userData.avatar || "");
+        localStorage.setItem("studentSchoolName", userData.schoolName || "");
+        localStorage.setItem("studentClassName", userData.className || "");
       } catch (fullNameError) {
         console.error("Lỗi fetch user:", fullNameError);
         localStorage.setItem("user", form.id);
+        localStorage.removeItem("studentAvatar");
+        localStorage.removeItem("studentSchoolName");
+        localStorage.removeItem("studentClassName");
       }
 
       // 3️⃣ lưu user
@@ -186,28 +188,27 @@ const Login = () => {
   };
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-8 sm:px-6">
-      <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-center p-5 sm:p-8">
+      <div className="grid w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl md:grid-cols-2">
+        <div className="flex flex-col items-center justify-center gap-5 bg-green-700 px-8 py-8 text-white md:gap-6 md:py-14">
+          <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-white md:h-56 md:w-56 md:border-8">
+            {/* Compensate for the off-center white disc in the source PNG. */}
+            <img src={logo} alt="ICHI SKILL Logo" className="h-24 w-24 translate-x-[2%] translate-y-[2.5%] rounded-full object-contain md:h-48 md:w-48" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-wide md:text-3xl">ICHI SKILL</h1>
+        </div>
+        <div className="flex items-center justify-center p-6 sm:p-10 md:px-12 lg:px-16">
 
           <div className="w-full max-w-md relative">
 
-            <img
-              src={cancelIcon}
-              alt="cancel"
+            <button
+              type="button"
+              aria-label="Đóng đăng nhập"
               onClick={() => navigate("/")}
               className="w-6 h-6 absolute top-0 right-0 cursor-pointer hover:scale-110 transition"
-            />
+            >
+              <img src={cancelIcon} alt="" className="h-full w-full" />
+            </button>
 
-            <div className="mb-6 flex flex-col items-center gap-2">
-              <img src={logo} alt="ICHI SKILL Logo" className="h-20 w-20 rounded-full object-contain" />
-              <h1 className="text-lg font-bold tracking-wide text-green-700">ICHI SKILL</h1>
-            </div>
-
-            {isRegistering ? (
-              <div>
-                <StudentRegistration onBack={() => setIsRegistering(false)} />
-              </div>
-            ) : <>
             <h2 className="text-2xl font-bold text-green-700 mb-8 text-center">
               Đăng nhập
             </h2>
@@ -215,13 +216,15 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="login-id" className="block text-sm font-medium mb-2">
                   ID
                 </label>
 
                 <input
                   type="text"
+                  id="login-id"
                   name="id"
+                  autoComplete="username"
                   value={form.id}
                   onChange={handleChange}
                   required
@@ -231,13 +234,15 @@ const Login = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="login-password" className="block text-sm font-medium mb-2">
                   Mật khẩu
                 </label>
 
                 <input
                   type="password"
+                  id="login-password"
                   name="password"
+                  autoComplete="current-password"
                   value={form.password}
                   onChange={handleChange}
                   required
@@ -262,13 +267,9 @@ const Login = () => {
 
             </form>
 
-            <p className="mt-6 text-center text-sm text-gray-600">
-              Chưa có tài khoản?{" "}
-              <button type="button" disabled={isSubmitting} onClick={() => setIsRegistering(true)} className="font-semibold text-green-700 hover:underline disabled:opacity-60">
-                Đăng ký ngay
-              </button>
-            </p>
-            </>}
+            <button type="button" disabled={isSubmitting} onClick={() => navigate("/register", { state: location.state })} className="mt-4 w-full rounded-xl border border-green-700 py-3 font-semibold text-green-700 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60">
+              Đăng ký
+            </button>
 
           </div>
 

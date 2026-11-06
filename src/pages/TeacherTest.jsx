@@ -16,10 +16,12 @@ import {
   X,
 } from "lucide-react";
 import {
+  startPublicAttempt,
   startPublicAttemptWithGroup,
   submitPublicAttempt,
 } from "../api/attempt";
 import { buildAssetUrl } from "../api/client";
+import { getQuestionBankStructure } from "../api/questionBank";
 
 /* ─────────────────── CONFIG ─────────────────── */
 
@@ -351,6 +353,7 @@ const TeacherTest = () => {
   /* ─── Start test ─── */
 
   const startTest = async () => {
+    if (isStarting) return;
     const normalizedName = teacherName.trim();
 
     if (!normalizedName) {
@@ -362,7 +365,17 @@ const TeacherTest = () => {
     setFormError("");
 
     try {
-      const payload = await startPublicAttemptWithGroup({
+      const structure = unwrapData(
+        await getQuestionBankStructure(QUESTION_BANK_ID)
+      );
+      if (!Number.isInteger(structure?.sectionCount) || structure.sectionCount < 0) {
+        throw new Error("Không thể xác định cấu trúc đề thi. Vui lòng thử lại.");
+      }
+      const startAttempt =
+        structure.sectionCount > 0
+          ? startPublicAttemptWithGroup
+          : startPublicAttempt;
+      const payload = await startAttempt({
         guestName: normalizedName,
         questionBankId: QUESTION_BANK_ID,
         examSetId: null,

@@ -1,28 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createAppSocket } from "../api/socket";
 import { getQuestionBankDetail } from "../api/questionBank";
-import { demoRoomKey } from "../utils/demoRegistration";
 import { hasTeacherRankingSession, podiumSelectionsKey, rankingCacheKey, updatePodiumSelection, withEliminationHistory } from "../utils/goldenBellRanking";
 
-const readSelections = (roomId, isDemo) => {
-  try { return JSON.parse(localStorage.getItem(podiumSelectionsKey(roomId, isDemo)) || "null"); }
+const readSelections = (roomId) => {
+  try { return JSON.parse(localStorage.getItem(podiumSelectionsKey(roomId)) || "null"); }
   catch { return null; }
 };
 
-const readRoom = (roomId, isDemo, snapshot) => {
-  const keys = isDemo ? [demoRoomKey(roomId)] : [rankingCacheKey(roomId, false), `golden_bell_room_${roomId}`];
+const readRoom = (roomId, snapshot) => {
+  const keys = [rankingCacheKey(roomId), `golden_bell_room_${roomId}`];
   for (const key of keys) {
     try {
       const saved = JSON.parse(localStorage.getItem(key) || "null");
-      if (saved && Array.isArray(saved.students)) return { ...saved, podiumSelections: saved.questionNo === 0 ? {} : readSelections(roomId, isDemo) || saved.podiumSelections };
+      if (saved && Array.isArray(saved.students)) return { ...saved, podiumSelections: saved.questionNo === 0 ? {} : readSelections(roomId) || saved.podiumSelections };
     } catch { /* Ignore damaged cached snapshots. */ }
   }
-  return snapshot?.roomId === roomId ? snapshot : { roomId, code: roomId, isDemo, students: [], questionNo: 0 };
+  return snapshot?.roomId === roomId ? snapshot : { roomId, code: roomId, students: [], questionNo: 0 };
 };
 
-export default function useGoldenBellRankingRoom(roomId, isDemo, snapshot, canManage) {
-  const [room, setRoom] = useState(() => readRoom(roomId, isDemo, snapshot));
-  const [connection, setConnection] = useState(isDemo ? "demo" : "connecting");
+export default function useGoldenBellRankingRoom(roomId, snapshot, canManage) {
+  const [room, setRoom] = useState(() => readRoom(roomId, snapshot));
+  const [connection, setConnection] = useState("connecting");
   const [error, setError] = useState("");
   const socketRef = useRef(null);
   const roomRef = useRef(room);
@@ -42,37 +41,35 @@ export default function useGoldenBellRankingRoom(roomId, isDemo, snapshot, canMa
 
   const choosePodiumRank = useCallback((rank, studentId) => {
     try {
-      if (!canManage || (!isDemo && !hasTeacherRankingSession())) throw new Error("Chỉ giáo viên được chọn thứ hạng.");
-      if (!isDemo && !socketRef.current?.connected) throw new Error("Cần kết nối phòng để lưu lựa chọn của giáo viên.");
+      if (!canManage || !hasTeacherRankingSession()) throw new Error("Chỉ giáo viên được chọn thứ hạng.");
+      if (!socketRef.current?.connected) throw new Error("Cần kết nối phòng để lưu lựa chọn của giáo viên.");
       const current = roomRef.current;
       const next = updatePodiumSelection(current, rank, studentId);
-      localStorage.setItem(podiumSelectionsKey(roomId, isDemo), JSON.stringify(next.podiumSelections));
+      localStorage.setItem(podiumSelectionsKey(roomId), JSON.stringify(next.podiumSelections));
       roomRef.current = next;
       setRoom(next);
       setError("");
-      if (!isDemo) {
-        pendingSyncRef.current = { roomId, room: next };
-        if (syncFrameRef.current !== null) window.cancelAnimationFrame(syncFrameRef.current);
-        // Paint the selected row before serializing the room for the socket.
+      pendingSyncRef.current = { roomId, room: next };
+      if (syncFrameRef.current !== null) window.cancelAnimationFrame(syncFrameRef.current);
+      // Paint the selected row before serializing the room for the socket.
+      syncFrameRef.current = window.requestAnimationFrame(() => {
         syncFrameRef.current = window.requestAnimationFrame(() => {
-          syncFrameRef.current = window.requestAnimationFrame(() => {
-            syncFrameRef.current = null;
-            flushPodiumSync();
-          });
+          syncFrameRef.current = null;
+          flushPodiumSync();
         });
-      }
+      });
     } catch (selectionError) {
       setError(selectionError.message || "Không thể lưu lựa chọn. Vui lòng thử lại.");
     }
-  }, [roomId, isDemo, canManage, flushPodiumSync]);
+  }, [roomId, canManage, flushPodiumSync]);
 
   useEffect(() => {
-    const key = isDemo ? demoRoomKey(roomId) : rankingCacheKey(roomId, false);
+    const key = rankingCacheKey(roomId);
     const acceptRoom = (next) => {
       if (!next || (next.roomId || next.code) !== roomId) return;
       if (next.podiumSelections || next.questionNo === 0) {
         try {
-          const selectionKey = podiumSelectionsKey(roomId, isDemo);
+          const selectionKey = podiumSelectionsKey(roomId);
           const json = JSON.stringify(next.questionNo === 0 ? {} : next.podiumSelections);
           if (localStorage.getItem(selectionKey) !== json) localStorage.setItem(selectionKey, json);
         } catch { /* Continue displaying live data if storage is unavailable. */ }
@@ -89,7 +86,7 @@ export default function useGoldenBellRankingRoom(roomId, isDemo, snapshot, canMa
       });
     };
     const handleStorage = (event) => {
-      if (event.key === podiumSelectionsKey(roomId, isDemo)) {
+      if (event.key === podiumSelectionsKey(roomId)) {
         try { setRoom((previous) => ({ ...previous, podiumSelections: JSON.parse(event.newValue || "{}") })); } catch { /* Ignore malformed selections. */ }
         return;
       }
@@ -97,7 +94,6 @@ export default function useGoldenBellRankingRoom(roomId, isDemo, snapshot, canMa
       try { if (event.newValue) acceptRoom(JSON.parse(event.newValue)); } catch { /* Ignore malformed cross-tab updates. */ }
     };
     window.addEventListener("storage", handleStorage);
-    if (isDemo) return () => window.removeEventListener("storage", handleStorage);
 
     const socket = createAppSocket(sessionStorage.getItem("teacherAccessToken") || undefined);
     socketRef.current = socket;
@@ -130,16 +126,15 @@ export default function useGoldenBellRankingRoom(roomId, isDemo, snapshot, canMa
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, isDemo, flushPodiumSync]);
+  }, [roomId, flushPodiumSync]);
 
   useEffect(() => {
-    if (isDemo) return;
     const snapshot = { ...room };
     delete snapshot.podiumSelections;
     const previous = cachedSnapshotRef.current;
     if (previous && Object.keys(snapshot).length === Object.keys(previous).length && Object.keys(snapshot).every((key) => snapshot[key] === previous[key])) return;
     const timer = window.setTimeout(() => {
-      const key = rankingCacheKey(roomId, false);
+      const key = rankingCacheKey(roomId);
       try {
         const json = JSON.stringify(snapshot);
         if (localStorage.getItem(key) !== json) localStorage.setItem(key, json);
@@ -147,10 +142,10 @@ export default function useGoldenBellRankingRoom(roomId, isDemo, snapshot, canMa
       } catch { /* Keep viewing if the cache is full. */ }
     }, 200);
     return () => window.clearTimeout(timer);
-  }, [room, roomId, isDemo]);
+  }, [room, roomId]);
 
   useEffect(() => {
-    if (isDemo || !room.questionBankId || room.questionBankName) return;
+    if (!room.questionBankId || room.questionBankName) return;
     let cancelled = false;
     getQuestionBankDetail(room.questionBankId, sessionStorage.getItem("teacherAccessToken") || undefined)
       .then((response) => {
@@ -158,7 +153,7 @@ export default function useGoldenBellRankingRoom(roomId, isDemo, snapshot, canMa
         if (!cancelled && (data?.name || data?.title)) setRoom((current) => ({ ...current, questionBankName: data.title || data.name }));
       }).catch(() => {});
     return () => { cancelled = true; };
-  }, [isDemo, room.questionBankId, room.questionBankName]);
+  }, [room.questionBankId, room.questionBankName]);
 
   return { room, connection, error, choosePodiumRank };
 }

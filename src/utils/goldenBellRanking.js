@@ -116,7 +116,7 @@ export const updatePodiumSelection = (room, rank, studentId) => {
   return { ...room, podiumSelections: { ...selections, [rank]: studentId } };
 };
 
-export const podiumSelectionsKey = (roomId, isDemo) => `golden_bell_podium_${isDemo ? "demo" : "live"}_${roomId}`;
+export const podiumSelectionsKey = (roomId) => `golden_bell_podium_live_${roomId}`;
 
 export const hasTeacherRankingSession = () => {
   try {
@@ -144,12 +144,10 @@ export const withEliminationHistory = (previous, next) => {
   }) };
 };
 
-export const rankingCacheKey = (roomId, isDemo) => `golden_bell_ranking_${isDemo ? "demo" : "live"}_${roomId}`;
+export const rankingCacheKey = (roomId) => `golden_bell_ranking_live_${roomId}`;
 
 export const openGoldenBellRanking = (navigate, room, returnTo) => {
   const roomId = room.roomId || room.code;
-  const isDemo = Boolean(room.isDemo);
-  try { localStorage.setItem(rankingCacheKey(roomId, isDemo), JSON.stringify(room)); } catch { /* Navigation still works if storage is full. */ }
-  const teacherView = isDemo && returnTo?.startsWith("/teacher");
-  navigate(`/xep-hang?room=${encodeURIComponent(roomId)}${isDemo ? "&demo=1" : ""}${teacherView ? "&manage=1" : ""}`, { state: { room, returnTo } });
+  try { localStorage.setItem(rankingCacheKey(roomId), JSON.stringify(room)); } catch { /* Navigation still works if storage is full. */ }
+  navigate(`/xep-hang?room=${encodeURIComponent(roomId)}`, { state: { room, returnTo } });
 };

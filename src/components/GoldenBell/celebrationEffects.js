@@ -1,15 +1,28 @@
 import applauseUrl from "../../assets/tieng_vo_tay.mp3";
 
 const applauseBuffers = new WeakMap();
+let applauseData;
 
-export const prepareApplause = (context) => {
-  if (!applauseBuffers.has(context)) {
-    const buffer = fetch(applauseUrl)
+const loadApplause = () => {
+  if (!applauseData) {
+    applauseData = fetch(applauseUrl)
       .then((response) => {
         if (!response.ok) throw new Error("Không tải được tiếng vỗ tay");
         return response.arrayBuffer();
       })
-      .then((data) => context.decodeAudioData(data))
+      .catch((error) => {
+        applauseData = undefined;
+        throw error;
+      });
+  }
+  return applauseData;
+};
+
+export const prepareApplause = (context) => {
+  if (!applauseBuffers.has(context)) {
+    const buffer = loadApplause()
+      // Decoding can detach the buffer; keep the shared download intact.
+      .then((data) => context.decodeAudioData(data.slice(0)))
       .catch((error) => {
         applauseBuffers.delete(context);
         throw error;

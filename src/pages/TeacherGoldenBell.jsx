@@ -762,7 +762,6 @@ const TeacherGoldenBell = () => {
               {isLoggingIn ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
-          {!import.meta.env.VITE_STUDENT_REGISTER_URL && <button type="button" onClick={() => navigate(`/teacher/demo${roomId ? `?room=${roomId}` : ""}`)} className="mt-4 w-full rounded-lg border border-green-700 px-4 py-2 font-semibold text-green-700 hover:bg-green-50">Xem phòng đăng ký demo</button>}
         </div>
       </div>
     );

@@ -20,7 +20,7 @@ export default function RankingHeader({ room, connection, returnTo }) {
       <p>Đề thi: <strong className="text-gray-800">{room.questionBankName || room.questionBank?.name || room.examSetName || "Chưa có thông tin"}</strong></p>
       {(room.teacherName || room.teacher?.name) && <p>Giáo viên: <strong>{room.teacherName || room.teacher.name}</strong></p>}
       {room.questionDurationSeconds && <p>Thời gian mỗi câu: <strong>{room.questionDurationSeconds} giây</strong></p>}
-      <p className="ml-auto font-medium text-green-700">{connection === "demo" ? "Demo · cập nhật giữa các tab" : connection === "connected" ? "Đang cập nhật trực tiếp" : connection === "connecting" ? "Đang kết nối phòng" : "Mất kết nối · dữ liệu đã lưu"}</p>
+      <p className="ml-auto font-medium text-green-700">{connection === "connected" ? "Đang cập nhật trực tiếp" : connection === "connecting" ? "Đang kết nối phòng" : "Mất kết nối · dữ liệu đã lưu"}</p>
     </div>
   </header>;
 }

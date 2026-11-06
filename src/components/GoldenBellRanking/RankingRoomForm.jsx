@@ -2,11 +2,10 @@ import React, { useState } from "react";
 
 export default function RankingRoomForm({ onSelectRoom }) {
   const [code, setCode] = useState("");
-  const [demo, setDemo] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (/^\d{6}$/.test(code)) onSelectRoom({ room: code, ...(demo ? { demo: "1" } : {}) });
+    if (/^\d{6}$/.test(code)) onSelectRoom({ room: code });
   };
 
   return (
@@ -23,10 +22,6 @@ export default function RankingRoomForm({ onSelectRoom }) {
           onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
           className="w-full rounded-xl border border-green-200 px-4 py-3 text-xl tracking-widest"
         />
-        <label className="flex items-center gap-2 text-sm text-gray-600">
-          <input type="checkbox" checked={demo} onChange={(event) => setDemo(event.target.checked)} />
-          Phòng demo trên trình duyệt
-        </label>
         <button className="w-full rounded-xl bg-green-700 px-4 py-3 font-semibold text-white">Xem xếp hạng</button>
       </form>
     </div>
