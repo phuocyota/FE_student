@@ -359,6 +359,8 @@ const TeacherGoldenBell = () => {
         if (response?.ok === false) {
           toast.error("Phòng không tồn tại hoặc đã kết thúc");
           navigate(`/teacher/${questionBankId}`, { replace: true });
+        } else if (response?.room) {
+          handleRoomState(response.room);
         }
       });
     };
@@ -374,14 +376,12 @@ const TeacherGoldenBell = () => {
     };
 
     const handleRoomState = (nextRoom) => {
-      if (!nextRoom) return;
+      if (!nextRoom || (nextRoom.roomId || nextRoom.code) !== roomId) return;
       nextRoom = withEliminationHistory(roomRef.current, nextRoom);
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
-        if (nextRoom.status === "FINISHED" &&
-          (getGoldenBellWinner(nextRoom) || getGoldenBellWinner(roomRef.current))) {
+        if (nextRoom.status === "FINISHED") {
           const finalRoom = { ...roomRef.current, ...nextRoom };
-          if (!getGoldenBellWinner(finalRoom)) finalRoom.students = roomRef.current.students;
           if (!finalRoom.questionNo) finalRoom.questionNo = roomRef.current.questionNo;
           roomRef.current = finalRoom;
           setRoom(finalRoom);
@@ -421,12 +421,6 @@ const TeacherGoldenBell = () => {
       socketRef.current = null;
     };
   }, [navigate, questionBankId, roomId, teacher.token]);
-
-  const markRoomFinished = useCallback(() => {
-    const finalRoom = { ...roomRef.current, status: "FINISHED" };
-    roomRef.current = finalRoom;
-    setRoom(finalRoom);
-  }, []);
 
   const handleCreateRoom = () => {
     if (!questionBankId) {
@@ -661,13 +655,11 @@ const TeacherGoldenBell = () => {
           return;
         }
 
-        if (getGoldenBellWinner(roomRef.current)) {
-          markRoomFinished();
-          return;
-        }
-        setRoom(createEmptyRoom("", questionBankId));
-        navigate(`/teacher/${questionBankId}`, { replace: true });
-        toast.success(`Đã kết thúc phòng ${roomId}`);
+        const finalRoom = { ...roomRef.current, ...response.room };
+        roomRef.current = finalRoom;
+        setRoom(finalRoom);
+        toast.success("Sàn đấu đã kết thúc. Thầy/Cô có 1 phút để điều chỉnh thứ hạng.");
+        openGoldenBellRanking(navigate, { ...finalRoom, questionBankName, teacherName: teacher.name }, `/teacher/${questionBankId}?room=${roomId}`);
       }
     );
   };

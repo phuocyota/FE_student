@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canSelectPodiumRank, getGoldenBellRanking, getRankingSelectionView, updatePodiumSelection, withEliminationHistory } from "../src/utils/goldenBellRanking.js";
+import { canSelectPodiumRank, getGoldenBellRanking, getRankingSelectionView, updatePodiumSelection, withEliminationHistory, getPodiumEditSecondsRemaining } from "../src/utils/goldenBellRanking.js";
 
 const eliminated = (id, round, time) => ({ id, name: id, status: "eliminated", lastQuestionNo: round, eliminatedAt: time });
 const ranks = (room) => Object.fromEntries(getGoldenBellRanking(room).map((student) => [student.id, student.rank]));
@@ -48,6 +48,8 @@ test("does not mutate the room or invent historical exit times", () => {
 });
 
 const tiedRoom = () => ({
+  status: "FINISHED",
+  endedAt: new Date().toISOString(),
   questionNo: 2,
   students: [
     { id: "winner", name: "Winner", status: "passed", lastQuestionNo: 2 },
@@ -55,90 +57,78 @@ const tiedRoom = () => ({
   ],
 });
 
-test("teacher resolves missing second and third place without duplicates", () => {
-  const second = updatePodiumSelection(tiedRoom(), 2, "a");
-  const third = updatePodiumSelection(second, 3, "b");
-  assert.deepEqual(ranks(third), { winner: 1, a: 2, b: 3, c: null });
-  assert.equal(getGoldenBellRanking(third).find((student) => student.id === "a").isTeacherSelected, true);
+test("teacher may assign every rank after finishing and override the automatic winner", () => {
+  const room = tiedRoom();
+  for (const rank of [1, 2, 3]) assert.equal(canSelectPodiumRank(room, rank), true);
+  const chosen = updatePodiumSelection(room, 1, "a");
+  assert.equal(ranks(chosen).a, 1);
+  assert.equal(ranks(chosen).winner, null);
+  assert.equal(getGoldenBellRanking(chosen).filter(s => s.isWinner).length, 1);
+  assert.equal(getGoldenBellRanking(chosen).find(s => s.id === "a").isWinner, true);
+  const pending = { questionNo: 0, status: "WAITING", students: [{id: "active", status: "active"}] };
+  assert.throws(() => updatePodiumSelection(pending, 1, "active"));
 });
 
-test("teacher must resolve second place before selecting third", () => {
-  assert.throws(() => updatePodiumSelection(tiedRoom(), 3, "b"), /hạng 2/);
+test("editing is allowed only for the first minute after finishing", () => {
+  const now = Date.now();
+  const room = { ...tiedRoom(), endedAt: new Date(now).toISOString() };
+  assert.equal(getPodiumEditSecondsRemaining(room, now), 60);
+  assert.equal(getPodiumEditSecondsRemaining(room, now + 59999), 1);
+  assert.equal(getPodiumEditSecondsRemaining(room, now + 60000), 0);
+  assert.equal(getPodiumEditSecondsRemaining({ ...room, status: "RUNNING" }, now), 0);
+  assert.equal(getPodiumEditSecondsRemaining({ ...room, endedAt: null }, now), 0);
+  assert.equal(getPodiumEditSecondsRemaining(room, now - 1), 0);
+  assert.throws(() => updatePodiumSelection({ ...room, endedAt: new Date(now - 60001).toISOString() }, 1, "a"));
 });
 
-test("manual selection cannot change the winner or reuse a contestant", () => {
-  assert.throws(() => updatePodiumSelection(tiedRoom(), 1, "a"));
-  assert.throws(() => updatePodiumSelection(tiedRoom(), 2, "winner"));
-  const room = updatePodiumSelection(tiedRoom(), 2, "a");
-  assert.throws(() => updatePodiumSelection(room, 3, "a"));
+test("teacher can select third place first and move a contestant without duplicate slots", () => {
+  const third = updatePodiumSelection(tiedRoom(), 3, "a");
+  const first = updatePodiumSelection(third, 1, "a");
+  assert.equal(first.podiumSelections[3], null);
+  assert.equal(ranks(first).a, 1);
+  assert.equal(getGoldenBellRanking(first).filter(s => s.rank === 3).length, 0);
 });
 
-test("unique automatic places stay locked and selections wait until results", () => {
-  const room = { questionNo: 2, students: [{ id: "winner", status: "passed", lastQuestionNo: 2 }, eliminated("second", 2), eliminated("third", 1)] };
-  assert.equal(canSelectPodiumRank(room, 2), false);
-  assert.equal(canSelectPodiumRank(room, 3), false);
-  assert.throws(() => updatePodiumSelection(room, 2, "third"));
-  const pending = tiedRoom();
-  pending.students[0].status = "active";
-  assert.equal(canSelectPodiumRank(pending, 2), false);
+test("replacing an occupied place removes its previous occupant from the podium", () => {
+  const chosen = updatePodiumSelection(updatePodiumSelection(tiedRoom(), 2, "a"), 2, "b");
+  assert.equal(ranks(chosen).b, 2);
+  assert.equal(ranks(chosen).a, null);
 });
 
-test("clearing second place also clears the subsequent third-place selection", () => {
+test("clearing a rank keeps other choices and does not restore the automatic occupant", () => {
   const chosen = updatePodiumSelection(updatePodiumSelection(tiedRoom(), 2, "a"), 3, "b");
   const cleared = updatePodiumSelection(chosen, 2, "");
-  assert.deepEqual(cleared.podiumSelections, {});
+  assert.equal(cleared.podiumSelections[2], null);
+  assert.equal(cleared.podiumSelections[3], "b");
+  assert.equal(ranks(cleared).b, 3);
+  assert.equal(ranks(cleared).a, null);
+});
+
+test("rejects invalid ranks and unknown contestants without mutating the room", () => {
+  const room = tiedRoom(); const original = JSON.stringify(room);
+  assert.throws(() => updatePodiumSelection(room, 4, "a"));
+  assert.throws(() => updatePodiumSelection(room, 1, "missing"));
+  updatePodiumSelection(room, 1, "a");
+  assert.equal(JSON.stringify(room), original);
+});
+
+test("manual results work in finished rooms and survive a waiting-room update", () => {
+  const chosen = updatePodiumSelection({ ...tiedRoom(), status: "FINISHED" }, 1, "c");
+  assert.equal(ranks(chosen).c, 1);
+  const waiting = { ...chosen, questionNo: 0 };
+  assert.equal(ranks(withEliminationHistory(waiting, waiting)).c, 1);
 });
 
 test("a room reset clears previous teacher selections", () => {
-  const chosen = updatePodiumSelection(tiedRoom(), 2, "a");
-  const reset = withEliminationHistory(chosen, { ...chosen, questionNo: 0, students: chosen.students.map((student) => ({ ...student, status: "active" })) });
+  const chosen = updatePodiumSelection(tiedRoom(), 1, "a");
+  const reset = withEliminationHistory(chosen, { ...chosen, questionNo: 0, students: chosen.students.map(s => ({...s, status: "active"})) });
   assert.deepEqual(reset.podiumSelections, {});
-  assert.equal(getGoldenBellRanking(reset).every((student) => student.rank === null), true);
+  assert.equal(getGoldenBellRanking(reset).every(s => s.rank === null), true);
 });
 
-test("only first place is displayed when runners-up cannot be ordered", () => {
-  const room = tiedRoom();
-  assert.deepEqual(ranks(room), { winner: 1, a: null, b: null, c: null });
-  assert.equal(canSelectPodiumRank(room, 2), true);
-  assert.equal(canSelectPodiumRank(room, 3), true);
-  assert.equal(getGoldenBellRanking(room)[0].id, "winner");
-});
-
-test("third place waits for an explicit teacher choice after second place is selected", () => {
-  const room = tiedRoom();
-  room.students = room.students.filter((student) => student.id !== "c");
-  const second = updatePodiumSelection(room, 2, "a");
-  assert.deepEqual(ranks(second), { winner: 1, a: 2, b: null });
-  assert.deepEqual(ranks(updatePodiumSelection(second, 3, "b")), { winner: 1, a: 2, b: 3 });
-});
-
-test("one correct and two wrong answers in the same question leaves both runners-up for the teacher", () => {
-  const room = {
-    questionNo: 1,
-    students: [
-      { id: "winner", status: "passed", lastQuestionNo: 1 },
-      eliminated("firstWrong", 1, "2026-11-05T01:00:00Z"),
-      eliminated("secondWrong", 1, "2026-11-05T01:00:10Z"),
-    ],
-  };
-  assert.deepEqual(ranks(room), { winner: 1, firstWrong: null, secondWrong: null });
-  assert.equal(canSelectPodiumRank(room, 2), true);
-  assert.equal(canSelectPodiumRank(room, 3), true);
-  const selected = updatePodiumSelection(updatePodiumSelection(room, 2, "firstWrong"), 3, "secondWrong");
-  assert.deepEqual(ranks(selected), { winner: 1, firstWrong: 2, secondWrong: 3 });
-  const reversed = updatePodiumSelection(updatePodiumSelection(room, 2, "secondWrong"), 3, "firstWrong");
-  assert.deepEqual(ranks(reversed), { winner: 1, firstWrong: 3, secondWrong: 2 });
-});
-
-test("inline selection keeps roster order stable while podium places update", () => {
-  const room = tiedRoom();
-  const before = getRankingSelectionView(room);
-  const selected = updatePodiumSelection(room, 2, "c");
-  const after = getRankingSelectionView(selected);
-  assert.deepEqual(after.participants.map((student) => student.id), before.participants.map((student) => student.id));
-  assert.equal(after.participants.find((student) => student.id === "c").rank, 2);
-  assert.equal(after.participants.find((student) => student.id === "winner").canChooseSecond, false);
-  assert.equal(after.participants.find((student) => student.id === "c").canChooseThird, false);
-  assert.equal(after.participants.find((student) => student.id === "a").canChooseThird, true);
-  assert.equal(after.secondResolved, true);
+test("all contestants stay selectable and roster order remains stable", () => {
+  const before = getRankingSelectionView(tiedRoom());
+  const after = getRankingSelectionView(updatePodiumSelection(tiedRoom(), 1, "c"));
+  assert.deepEqual(after.participants.map(s => s.id), before.participants.map(s => s.id));
+  assert.equal(after.participants.every(s => s.canChooseFirst && s.canChooseSecond && s.canChooseThird), true);
 });
