@@ -349,6 +349,7 @@ const GoldenBellArena = () => {
                     <GoldenBellArenaStudentCard
                       key={student.id}
                       student={student}
+                      questionNo={room.questionNo}
                       isWinner={winner?.id === student.id}
                     />
                 ))}

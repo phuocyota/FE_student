@@ -14,6 +14,7 @@ import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
 import GoldenBellExamCelebration from "../components/GoldenBellExam/GoldenBellExamCelebration";
 import { getGoldenBellWinner } from "../utils/goldenBellWinner";
+import { isWaitingAfterGoldenBellRevival } from "../utils/goldenBellRevival";
 import GoldenBellWinnerBadge from "../components/GoldenBell/GoldenBellWinnerBadge";
 import StudentAvatar from "../components/GoldenBell/StudentAvatar";
 import { openGoldenBellRanking, withEliminationHistory } from "../utils/goldenBellRanking";
@@ -173,7 +174,7 @@ const GoldenBellRoom = ({ roomId }) => {
   const hasSelected = Boolean(selectedAnswer);
   const isCorrect = Boolean(selectedAnswer?.isCorrect);
   const isEliminated = currentStudent?.status === "eliminated";
-  const isWaitingForNextQuestion = !isEliminated && (currentStudent?.resumeFromQuestionNo || 0) > (room.questionNo || 0);
+  const isWaitingForNextQuestion = isWaitingAfterGoldenBellRevival(currentStudent, room.questionNo);
   const isQuestionClosed = Boolean(room.questionEndedAt) || Boolean(room.currentQuestion && remainingSeconds <= 0) || room.status === "FINISHED" || room.status === "EXPIRED";
   const previousStudentStatusRef = useRef(currentStudent?.status);
   const handledRevivalRef = useRef(currentStudent?.revivalCount || 0);
@@ -187,7 +188,7 @@ const GoldenBellRoom = ({ roomId }) => {
     setSelectedAnswer(null);
     eliminationNoticeRef.current = "";
     toast.dismiss(`golden-bell-elimination-${studentId}`);
-    toast.success("Bạn đã được giáo viên hồi sinh và trở lại sân chơi!", { duration: 5000 });
+    toast.success("Bạn đã được hồi sinh! Chờ câu hỏi kế tiếp để tiếp tục thi đấu.", { duration: 5000 });
   }, [currentStudent?.revivalCount, currentStudent?.status, studentId]);
   const joinedCount = room.students.length;
   const passedCount = room.students.filter(
@@ -447,7 +448,12 @@ const GoldenBellRoom = ({ roomId }) => {
       return;
     }
 
-    if (isQuestionClosed || isWaitingForNextQuestion) {
+    if (isWaitingForNextQuestion) {
+      toast("Bạn đã được hồi sinh. Chờ giáo viên phát câu hỏi kế tiếp.");
+      return;
+    }
+
+    if (isQuestionClosed) {
       toast.error("Đã hết thời gian trả lời câu hỏi này.");
       return;
     }
@@ -668,14 +674,14 @@ const GoldenBellRoom = ({ roomId }) => {
                       </div>
                       <span
                         className={`text-xs font-bold ${
-                          winner?.id === student.id ? "text-amber-800" : student.status === "passed"
+                          winner?.id === student.id ? "text-amber-800" : isWaitingAfterGoldenBellRevival(student, room.questionNo) ? "text-blue-700" : student.status === "passed"
                             ? "text-green-700"
                             : student.status === "eliminated"
                               ? "text-red-600"
                               : "text-gray-500"
                         }`}
                       >
-                        {winner?.id === student.id ? "Chiến thắng" : student.status === "passed"
+                        {winner?.id === student.id ? "Chiến thắng" : isWaitingAfterGoldenBellRevival(student, room.questionNo) ? "Đã hồi sinh · Chờ câu tiếp theo" : student.status === "passed"
                           ? "Qua"
                           : student.status === "eliminated"
                             ? "Hạ bảng"
