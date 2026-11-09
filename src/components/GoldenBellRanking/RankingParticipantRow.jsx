@@ -1,12 +1,21 @@
 import React, { memo } from "react";
 import StudentAvatar from "../GoldenBell/StudentAvatar";
 
-function RankingParticipantRow({ student, canManage, disabled, secondResolved, onSelect }) {
+function RankingParticipantRow({ student, canManage, disabled, secondResolved, onSelect, onDragStudent }) {
   const selectedSecond = student.isTeacherSelected && student.rank === 2;
   const selectedThird = student.isTeacherSelected && student.rank === 3;
+  const canDrag = canManage && !disabled && (student.canChooseSecond || (student.canChooseThird && secondResolved));
 
   return (
-    <article data-student-id={student.id} className={`rounded-xl border p-2.5 transition-colors duration-150 ${student.isWinner ? "border-yellow-300 bg-yellow-50" : student.isTeacherSelected ? "border-green-300 bg-green-50" : "border-gray-100"}`}>
+    <article data-student-id={student.id} draggable={canDrag} title={canDrag ? "Kéo thí sinh vào hạng 2 hoặc hạng 3 trên bục" : undefined}
+      onDragStart={(event) => {
+        if (!canDrag || event.target.closest("button")) { event.preventDefault(); return; }
+        event.dataTransfer.setData("application/x-golden-bell-student", student.id);
+        event.dataTransfer.effectAllowed = "move";
+        onDragStudent(student.id);
+      }}
+      onDragEnd={() => onDragStudent(null)}
+      className={`rounded-xl border p-2.5 transition-colors duration-150 ${canDrag ? "cursor-grab active:cursor-grabbing" : ""} ${student.isWinner ? "border-yellow-300 bg-yellow-50" : student.isTeacherSelected ? "border-green-300 bg-green-50" : "border-gray-100"}`}>
       <div className="flex items-center gap-2">
         <span className={`w-6 shrink-0 text-center text-xs font-bold ${student.rank === 1 ? "text-amber-600" : "text-green-800"}`} aria-label={student.rank ? `Hạng ${student.rank}` : "Chưa xếp hạng"}>{student.rank ? `#${student.rank}` : "—"}</span>
         <StudentAvatar student={student} className="h-9 w-9" />
@@ -31,6 +40,6 @@ const displayedFields = ["id", "name", "fullName", "avatar", "photo", "className
 
 export default memo(RankingParticipantRow, (previous, next) =>
   previous.canManage === next.canManage && previous.disabled === next.disabled &&
-  previous.secondResolved === next.secondResolved && previous.onSelect === next.onSelect &&
+  previous.secondResolved === next.secondResolved && previous.onSelect === next.onSelect && previous.onDragStudent === next.onDragStudent &&
   displayedFields.every((field) => previous.student[field] === next.student[field])
 );
