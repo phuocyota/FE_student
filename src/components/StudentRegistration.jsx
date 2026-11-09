@@ -6,7 +6,6 @@ import RegistrationOptionField, { NEW_REGISTRATION_OPTION } from "./Registration
 
 const fields = [
   { name: "fullName", label: "Họ và tên", placeholder: "Nhập họ và tên học sinh", autoComplete: "name", maxLength: 150 },
-  { name: "password", label: "Mật khẩu", placeholder: "Nhập mật khẩu (ít nhất 6 ký tự)", autoComplete: "new-password", minLength: 6, maxLength: 72, type: "password" },
   { name: "phoneNumber", label: "Số điện thoại liên hệ", placeholder: "Nhập số điện thoại phụ huynh", autoComplete: "tel", maxLength: 20, type: "tel" },
 ];
 
@@ -22,7 +21,7 @@ const cameraErrorMessage = (error) => {
 export default function StudentRegistration({ onBack }) {
   const navigate = useNavigate();
   const [registeredUsername, setRegisteredUsername] = useState("");
-  const [form, setForm] = useState({ fullName: "", password: "", schoolId: "", classId: "", schoolName: "", className: "", phoneNumber: "" });
+  const [form, setForm] = useState({ fullName: "", schoolId: "", classId: "", schoolName: "", className: "", phoneNumber: "" });
   const [schools, setSchools] = useState([]);
   const classes = schools.find((school) => school.id === form.schoolId)?.classes || [];
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -155,8 +154,8 @@ export default function StudentRegistration({ onBack }) {
     event.preventDefault();
     if (isSubmitting) return;
     setError("");
-    const values = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, key === "password" ? value : value.trim()]));
-    if ([values.fullName, values.password, values.schoolId, values.classId].some((value) => !value)) {
+    const values = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, value.trim()]));
+    if ([values.fullName, values.schoolId, values.classId].some((value) => !value)) {
       setError("Vui lòng điền đầy đủ thông tin đăng ký.");
       return;
     }
@@ -165,10 +164,6 @@ export default function StudentRegistration({ onBack }) {
       return;
     }
     const phoneNumber = values.phoneNumber.replace(/[\s().-]/g, "");
-    if (new TextEncoder().encode(values.password).length > 72) {
-      setError("Mật khẩu không được vượt quá 72 byte. Vui lòng dùng mật khẩu ngắn hơn.");
-      return;
-    }
     if (values.phoneNumber && !/^(?:0|\+84|84)[35789]\d{8}$/.test(phoneNumber)) {
       setError("Vui lòng nhập số điện thoại Việt Nam hợp lệ (ví dụ: 0912345678 hoặc +84912345678).");
       return;
@@ -181,7 +176,7 @@ export default function StudentRegistration({ onBack }) {
     try {
       const { schoolId, classId, schoolName, className, ...student } = values;
       const response = await registerStudent({
-        ...student, phoneNumber, photo,
+        ...student, password: "123456", phoneNumber, photo,
         ...(schoolId === NEW_REGISTRATION_OPTION ? { schoolName } : { schoolId }),
         ...(classId === NEW_REGISTRATION_OPTION ? { className } : { classId }),
       });
@@ -209,6 +204,7 @@ export default function StudentRegistration({ onBack }) {
       <h2 className="text-2xl font-bold text-green-700">Đăng ký thành công</h2>
       <p>Hãy lưu lại ID đăng nhập để sử dụng cho những lần sau.</p>
       <p className="break-all text-2xl font-bold">{registeredUsername}</p>
+      <p>Mật khẩu mặc định: <strong>123456</strong></p>
       <button type="button" onClick={() => navigate("/golden-bell", { replace: true })} className="rounded-lg bg-green-700 px-4 py-2 font-semibold text-white">Tiếp tục</button>
     </div>
   );
