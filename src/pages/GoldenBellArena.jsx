@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCircle2, Gift, Users } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
 import GoldenBellArenaCelebration from "../components/GoldenBellArena/GoldenBellArenaCelebration";
 import GoldenBellArenaStudentCard from "../components/GoldenBellArena/GoldenBellArenaStudentCard";
 import { getGoldenBellWinner } from "../utils/goldenBellWinner";
+import { goldenBellArenaDemoRoom } from "../datas/goldenBellArenaDemo";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -42,11 +43,14 @@ const createEmptyRoom = (roomId) => ({
 
 const GoldenBellArena = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const isDemo = searchParams.get("demo") === "1";
   const roomId = (id || "").trim().toUpperCase();
-  const [room, setRoom] = useState(() => createEmptyRoom(roomId));
+  const [liveRoom, setRoom] = useState(() => createEmptyRoom(roomId));
+  const room = isDemo ? goldenBellArenaDemoRoom : liveRoom;
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [roomError, setRoomError] = useState("");
-  const [remainingSeconds, setRemainingSeconds] = useState(QUESTION_SECONDS);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const socketRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
@@ -70,6 +74,7 @@ const GoldenBellArena = () => {
   const questionEndedAt = room.questionEndedAt;
   const isTimeUp = Boolean(room.currentQuestion) && remainingSeconds <= 0;
   useEffect(() => {
+    if (isDemo) return undefined;
     const socket = createAppSocket();
     socketRef.current = socket;
 
@@ -140,7 +145,7 @@ const GoldenBellArena = () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, isDemo]);
 
   useEffect(() => {
     if (!currentQuestionId) return undefined;
@@ -206,10 +211,10 @@ const GoldenBellArena = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 via-gray-100 to-white text-gray-900">
-      <GoldenBellArenaCelebration room={room} roomId={roomId} />
       {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng thi đã kết thúc.</p>}
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="mb-6 flex flex-col items-center gap-5 border-b border-green-200 pb-6 text-center">
+      <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col px-4 py-4 sm:px-6">
+        <header className="relative mb-4 flex flex-col items-center gap-3 border-b border-green-200 pb-5 text-center">
+          <GoldenBellArenaCelebration room={room} roomId={roomId} />
           <div>
             <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wide text-green-700 sm:text-sm">
               <Bell size={18} />
@@ -243,7 +248,7 @@ const GoldenBellArena = () => {
           </div>
         </header>
 
-        <main className="grid flex-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+        <main className="grid flex-1 items-start gap-5 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]">
           <section aria-label="Nội dung câu hỏi" className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-5 inline-flex rounded-md bg-yellow-400 px-4 py-2 text-xs font-black uppercase tracking-wide text-gray-900">
               Lĩnh vực: Trắc nghiệm
@@ -312,28 +317,22 @@ const GoldenBellArena = () => {
             )}
           </section>
 
-          <section aria-label="Danh sách thí sinh" className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="mb-4 flex flex-col gap-3 border-b border-gray-200 pb-4">
+          <section aria-label="Danh sách thí sinh" className="min-w-0 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+            <div className="mb-3 flex flex-col gap-2 border-b border-gray-200 pb-3">
               <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-green-700">
                 <Users size={18} />
                 Thí sinh trong phòng
               </div>
-              <div className="flex items-center gap-2 text-sm font-bold">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
                 <span className="text-gray-900">{activeCount}</span>
                 <span className="text-gray-400">/</span>
                 <span className="text-gray-900">{students.length}</span>
                 <span className="text-gray-900">còn trụ</span>
-              </div>
-
-              <div className="flex flex-wrap gap-2 text-xs font-bold">
-                <span className="rounded border border-green-200 bg-green-50 px-2 py-1 text-green-700">
-                  Đang đấu
-                </span>
-                <span className="rounded border border-gray-200 bg-gray-100 px-2 py-1 text-gray-700">
+                <span className="rounded border border-red-100 bg-red-50 px-2 py-0.5 text-red-600">
                   Hạ bảng: {eliminatedCount}
                 </span>
-                <span className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">
-                  {socketStatus === "connected" ? "Trực tuyến" : socketStatus === "connecting" ? "Đang kết nối" : "Mất kết nối"}
+                <span className="ml-auto rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">
+                  {isDemo ? "Dữ liệu mẫu" : socketStatus === "connected" ? "Trực tuyến" : socketStatus === "connecting" ? "Đang kết nối" : "Mất kết nối"}
                 </span>
               </div>
             </div>
@@ -344,7 +343,7 @@ const GoldenBellArena = () => {
                 <p className="text-sm font-medium">Chưa có học sinh tham gia phòng.</p>
               </div>
             ) : (
-              <div className="grid max-h-[65vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 lg:grid-cols-2">
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
                 {students.map((student) => (
                     <GoldenBellArenaStudentCard
                       key={student.id}

@@ -12,9 +12,8 @@ const positions = [
 export default function RankingPodium({ ranking }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-yellow-100 bg-gradient-to-b from-white to-amber-50/40 p-4 shadow-sm sm:p-6" aria-labelledby="ranking-podium-title">
-      <h2 id="ranking-podium-title" className="text-xl font-bold text-green-900">Bục vinh danh</h2>
-      <p className="mt-2 text-sm text-gray-500">Hạng 1 được xác nhận khi thí sinh cuối cùng trả lời đúng.</p>
-      <div className="relative mx-auto mt-24 aspect-[4/3] w-full max-w-2xl [container-type:inline-size]" style={{ backgroundImage: `url(${podium})`, backgroundSize: "100% auto", backgroundPosition: "top center", backgroundRepeat: "no-repeat" }}>
+      <h2 id="ranking-podium-title" className="mx-auto w-full max-w-md py-3 text-center font-serif text-4xl font-bold tracking-wide text-green-900 sm:text-5xl">RANKING</h2>
+      <div className="relative mx-auto mt-8 aspect-[4/3] w-full max-w-2xl [container-type:inline-size] sm:mt-10" style={{ backgroundImage: `url(${podium})`, backgroundSize: "100% auto", backgroundPosition: "top center", backgroundRepeat: "no-repeat" }}>
         <p className="sr-only">Bục vàng gồm hạng 2 bên trái, hạng 1 ở giữa và hạng 3 bên phải.</p>
         {positions.map(({ rank, left, top }) => {
           const students = ranking.filter((student) => student.rank === rank);
