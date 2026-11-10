@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import RankingParticipantRow from "./RankingParticipantRow";
 
-export default function RankingParticipants({ ranking, canManage, onSelect, disabled, secondResolved, canChooseRanks }) {
+export default function RankingParticipants({ ranking, canManage, onSelect, onDragStudent, disabled, canChooseRanks }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const shown = ranking.filter((student) => {
@@ -20,11 +20,11 @@ export default function RankingParticipants({ ranking, canManage, onSelect, disa
             <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filter === value ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-green-50"}`}>{label}</button>
           ))}
         </div>
-        {canManage && canChooseRanks && <p className="rounded-lg bg-green-50 px-3 py-2 text-xs leading-5 text-green-800">{secondResolved ? "Chọn hạng 3 ngay tại dòng thí sinh. Bấm Bỏ chọn để điều chỉnh." : "Chọn hạng 2 ngay tại dòng thí sinh, sau đó chọn hạng 3."}</p>}
+        {canManage && canChooseRanks && <p className="rounded-lg bg-green-50 px-3 py-2 text-xs leading-5 text-green-800">Kéo thí sinh vào vị trí trên bục hoặc bấm nút chọn hạng 1, 2, 3. Chỉnh xong bấm Chốt & gửi kết quả để cập nhật sân thi đấu.</p>}
       </div>
       <div className="max-h-[640px] space-y-2 overflow-y-auto p-3">
         {!shown.length ? <p className="py-8 text-center text-sm text-gray-500">Không có thí sinh phù hợp.</p> : shown.map((student) => (
-          <RankingParticipantRow key={student.id} student={student} canManage={canManage} onSelect={onSelect} disabled={disabled} secondResolved={secondResolved} />
+          <RankingParticipantRow key={student.id} student={student} canManage={canManage} onSelect={onSelect} onDragStudent={onDragStudent} disabled={disabled} />
         ))}
       </div>
     </section>

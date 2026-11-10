@@ -10,6 +10,15 @@ export const getQuestionBankDetail = async (questionBankId, token) => {
   return parseResponse(res);
 };
 
+export const getQuestionBankStructure = async (questionBankId) => {
+  const res = await fetch(
+    `${API.QUESTION_BANK.DETAIL(questionBankId)}/structure`,
+    {},
+    null
+  );
+  return parseResponse(res);
+};
+
 export const getCurrentGoldenBellQuestionBank = async (token) => {
   const response = await fetch(
     API.EXAM_SET.DETAIL(GOLDEN_BELL_EXAM_SET_ID),

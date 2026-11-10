@@ -6,6 +6,9 @@ import { createAppSocket } from "../api/socket";
 import GoldenBellArenaCelebration from "../components/GoldenBellArena/GoldenBellArenaCelebration";
 import GoldenBellArenaStudentCard from "../components/GoldenBellArena/GoldenBellArenaStudentCard";
 import { getGoldenBellWinner } from "../utils/goldenBellWinner";
+import { getGoldenBellRanking } from "../utils/goldenBellRanking";
+import RankingPodium from "../components/GoldenBellRanking/RankingPodium";
+import { applyLocalPodium, localPodiumKey, readLocalPodiumRoom, rememberPodiumResult } from "../utils/goldenBellLocalPodium";
 import { goldenBellArenaDemoRoom } from "../datas/goldenBellArenaDemo";
 import {
   buildContentChain,
@@ -46,7 +49,7 @@ const GoldenBellArena = () => {
   const [searchParams] = useSearchParams();
   const isDemo = searchParams.get("demo") === "1";
   const roomId = (id || "").trim().toUpperCase();
-  const [liveRoom, setRoom] = useState(() => createEmptyRoom(roomId));
+  const [liveRoom, setRoom] = useState(() => readLocalPodiumRoom(roomId) || createEmptyRoom(roomId));
   const room = isDemo ? goldenBellArenaDemoRoom : liveRoom;
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [roomError, setRoomError] = useState("");
@@ -54,7 +57,8 @@ const GoldenBellArena = () => {
   const socketRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
-  const winner = getGoldenBellWinner(room);
+  const ranking = useMemo(() => getGoldenBellRanking(room), [room]);
+  const winner = room.status === "FINISHED" ? ranking.find((student) => student.isWinner) : getGoldenBellWinner(room);
   const activeCount = students.filter(
     (student) => student.status !== "eliminated"
   ).length;
@@ -90,6 +94,9 @@ const GoldenBellArena = () => {
           setRoomError("Không tìm thấy phòng hoặc phòng đã kết thúc.");
         } else {
           setRoomError("");
+          if (response?.hasPodiumResult && response.room?.status === "FINISHED") {
+            handlePodiumResult({ roomId, room: response.room });
+          } else if (response?.room) handleRoomState(response.room);
         }
       });
     };
@@ -99,7 +106,7 @@ const GoldenBellArena = () => {
     };
 
     const handleRoomState = (nextRoom) => {
-      if (!nextRoom) return;
+      if (!nextRoom || (nextRoom.roomId || nextRoom.code) !== roomId) return;
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
         setRoomError(
@@ -107,7 +114,7 @@ const GoldenBellArena = () => {
             ? "Phòng đã hết hạn sau 24 giờ."
             : "Giáo viên đã kết thúc phòng thi đấu."
         );
-        setRoom((previousRoom) => ({
+        setRoom((previousRoom) => applyLocalPodium({
           ...previousRoom,
           ...nextRoom,
           students: nextRoom.students?.length ? toArray(nextRoom.students) : previousRoom.students,
@@ -135,6 +142,23 @@ const GoldenBellArena = () => {
     socket.on("disconnect", handleDisconnect);
     socket.on("connect_error", handleDisconnect);
     socket.on("golden-bell:room-state", handleRoomState);
+    const handlePodiumResult = (payload) => {
+      if (payload?.roomId !== roomId || payload.room?.status !== "FINISHED") return;
+      let result = payload.room;
+      try { result = rememberPodiumResult(result); } catch { /* Keep the live result if browser storage is full. */ }
+      handleRoomState(result);
+    };
+    socket.on("golden-bell:podium-result", handlePodiumResult);
+    const handleLocalPodium = (event) => {
+      if (event.key !== localPodiumKey(roomId)) return;
+      setRoom((previous) => {
+        const saved = readLocalPodiumRoom(roomId);
+        // The arena may have missed the final room event while disconnected.
+        if (saved && previous.status !== "FINISHED" && previous.status !== "EXPIRED") return saved;
+        return applyLocalPodium(previous);
+      });
+    };
+    window.addEventListener("storage", handleLocalPodium);
 
     return () => {
       if (roomId) socket.emit("golden-bell:leave", { roomId });
@@ -142,6 +166,8 @@ const GoldenBellArena = () => {
       socket.off("disconnect", handleDisconnect);
       socket.off("connect_error", handleDisconnect);
       socket.off("golden-bell:room-state", handleRoomState);
+      socket.off("golden-bell:podium-result", handlePodiumResult);
+      window.removeEventListener("storage", handleLocalPodium);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -212,6 +238,7 @@ const GoldenBellArena = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 via-gray-100 to-white text-gray-900">
       {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng thi đã kết thúc.</p>}
+      {room.status === "FINISHED" && <div className="mx-auto w-full max-w-5xl px-4 py-6" aria-live="polite"><RankingPodium ranking={ranking} /></div>}
       <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col px-4 py-4 sm:px-6">
         <header className="relative mb-4 flex flex-col items-center gap-3 border-b border-green-200 pb-5 text-center">
           <GoldenBellArenaCelebration room={room} roomId={roomId} />
@@ -348,6 +375,7 @@ const GoldenBellArena = () => {
                     <GoldenBellArenaStudentCard
                       key={student.id}
                       student={student}
+                      questionNo={room.questionNo}
                       isWinner={winner?.id === student.id}
                     />
                 ))}

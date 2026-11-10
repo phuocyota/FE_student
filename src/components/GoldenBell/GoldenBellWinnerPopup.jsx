@@ -1,15 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Trophy, X } from "lucide-react";
-import { launchFireworks, playApplause, prepareApplause } from "./celebrationEffects";
-import { getGoldenBellWinner } from "../../utils/goldenBellWinner";
+import { launchFireworks, playApplause } from "./celebrationEffects";
 import StudentAvatar from "./StudentAvatar";
-import { openGoldenBellRanking } from "../../utils/goldenBellRanking";
+import { getGoldenBellRanking, openGoldenBellRanking } from "../../utils/goldenBellRanking";
 
 const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const winner = getGoldenBellWinner(room);
+  const winner = getGoldenBellRanking(room).find((student) => student.isWinner);
   const overlayRef = useRef(null);
   const canvasRef = useRef(null);
   const nameRef = useRef(null);
@@ -25,7 +24,6 @@ const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (AudioContext) {
       audioRef.current = new AudioContext();
-      void prepareApplause(audioRef.current).catch(() => {});
     }
     const unlockAudio = () => {
       if (!audioRef.current) return;
@@ -60,16 +58,17 @@ const GoldenBellWinnerPopup = ({ room, roomId, eligibleStudentId }) => {
       return;
     }
 
-    const winner = getGoldenBellWinner(room);
+    const winner = getGoldenBellRanking(room).find((student) => student.isWinner);
     if (!winner) celebratedRef.current = false;
     if (!winner || (eligibleStudentId !== undefined && winner.id !== eligibleStudentId)) {
       stopRef.current();
       return;
     }
     // A room with just its first participant is not a winning round.
-    if (celebratedRef.current) return;
+    if (celebratedRef.current === winner.id) return;
 
-    celebratedRef.current = true;
+    stopRef.current();
+    celebratedRef.current = winner.id;
     nameRef.current.textContent = winner.name || "Thí sinh xuất sắc";
     detailsRef.current.textContent = `Mã phòng: ${roomId} • Câu cuối: ${room.questionNo} • Đúng: ${winner.correctCount || 0} • Sai: ${winner.wrongCount || 0}`;
     overlayRef.current.hidden = false;

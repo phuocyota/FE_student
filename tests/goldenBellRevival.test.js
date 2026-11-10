@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reviveGoldenBellStudent } from "../src/utils/goldenBellRevival.js";
+import { reviveGoldenBellStudent, isWaitingAfterGoldenBellRevival } from "../src/utils/goldenBellRevival.js";
 import { getGoldenBellWinner } from "../src/utils/goldenBellWinner.js";
 
 const createRoom = () => ({
@@ -13,12 +13,20 @@ const createRoom = () => ({
   ],
 });
 
+test("waiting ends at the next question and never applies to eliminated students", () => {
+  const student = { status: "active", resumeFromQuestionNo: 3 };
+  assert.equal(isWaitingAfterGoldenBellRevival(student, 2), true);
+  assert.equal(isWaitingAfterGoldenBellRevival(student, 3), false);
+  assert.equal(isWaitingAfterGoldenBellRevival({ ...student, status: "eliminated" }, 2), false);
+  assert.equal(isWaitingAfterGoldenBellRevival(undefined, 2), false);
+});
+
 test("revival restores eligibility while retaining scores and the other contestants", () => {
   const room = createRoom();
   const next = reviveGoldenBellStudent(room, "out");
   const student = next.students[1];
   assert.equal(student.status, "active");
-  assert.equal(student.lastQuestionNo, 0);
+  assert.equal(student.lastQuestionNo, 2);
   assert.equal(student.correctCount, 1);
   assert.equal(student.wrongCount, 1);
   assert.equal(student.eliminatedAt, null);

@@ -1,8 +1,10 @@
 import React from "react";
 import { Trophy, X } from "lucide-react";
 import StudentAvatar from "../GoldenBell/StudentAvatar";
+import { isWaitingAfterGoldenBellRevival } from "../../utils/goldenBellRevival";
 
-export default function GoldenBellArenaStudentCard({ student, isWinner }) {
+export default function GoldenBellArenaStudentCard({ student, isWinner, questionNo }) {
+  const isWaiting = isWaitingAfterGoldenBellRevival(student, questionNo);
   const isEliminated = student.status === "eliminated";
   const isPassed = student.status === "passed";
 
@@ -10,7 +12,7 @@ export default function GoldenBellArenaStudentCard({ student, isWinner }) {
     <div className={`relative flex h-10 min-w-0 items-center gap-2 rounded-lg border px-2 ${
       isWinner ? "border-yellow-400 bg-gradient-to-b from-yellow-50 to-amber-100 shadow-sm"
         : isEliminated ? "border-red-500 bg-gray-100 ring-1 ring-red-500"
-          : isPassed ? "border-green-400 bg-green-50" : "border-gray-200 bg-white"
+          : isWaiting ? "border-blue-300 bg-blue-50" : isPassed ? "border-green-400 bg-green-50" : "border-gray-200 bg-white"
     }`}>
       {isEliminated && !isWinner && (
         <X
@@ -30,8 +32,8 @@ export default function GoldenBellArenaStudentCard({ student, isWinner }) {
           <div title={student.name || student.fullName} className={`truncate text-[11px] leading-4 text-gray-900 ${isWinner ? "font-bold" : "font-medium"}`}>
             {student.name || student.fullName}
           </div>
-          <div className={`text-[9px] font-semibold leading-3 ${isWinner ? "text-amber-800" : isEliminated ? "text-red-600" : "text-green-700"}`}>
-            {isWinner ? "Chiến thắng" : isEliminated ? "Hạ bảng" : isPassed ? "Trả lời đúng" : "Đang đấu"}
+          <div title={isWaiting ? "Đã hồi sinh · Chờ câu tiếp theo" : undefined} className={`truncate text-[9px] font-semibold leading-3 ${isWinner ? "text-amber-800" : isEliminated ? "text-red-600" : isWaiting ? "text-blue-700" : "text-green-700"}`}>
+            {isWinner ? "Chiến thắng" : isEliminated ? "Hạ bảng" : isWaiting ? "Đã hồi sinh · Chờ câu tiếp theo" : isPassed ? "Trả lời đúng" : "Đang đấu"}
           </div>
         </div>
       </div>

@@ -1,8 +1,9 @@
 import React from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Header from "./components/layout/Header";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Home from "./pages/Home";
 import ExamList from "./pages/ExamList";
 import ExamDetail from "./pages/ExamDetail";
@@ -14,7 +15,6 @@ import ExamReview from "./pages/ExamReview";
 import GoldenBellExam from "./pages/GoldenBellExam";
 import GoldenBellArena from "./pages/GoldenBellArena";
 import TeacherGoldenBell from "./pages/TeacherGoldenBell";
-import GoldenBellDemoTeacher from "./pages/GoldenBellDemoTeacher";
 import GoldenBellRanking from "./pages/GoldenBellRanking";
 import PlacementTest from "./pages/PlacementTest";
 import TeacherTest from "./pages/TeacherTest";
@@ -75,6 +75,7 @@ const App = () => {
 
           {/* LOGIN */}
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/login/random-exam" element={<ExamRandom />} />
 
           {/* EXAM LIST */}
@@ -115,7 +116,7 @@ const App = () => {
           <Route
             path="/golden-bell"
             element={
-              <ProtectedRoute allowDemo>
+              <ProtectedRoute redirectTo="/register">
                 <GoldenBellExam />
               </ProtectedRoute>
             }
@@ -124,7 +125,7 @@ const App = () => {
           <Route
             path="/golden-bell/:id"
             element={
-              <ProtectedRoute allowDemo>
+              <ProtectedRoute redirectTo="/register">
                 <GoldenBellExam />
               </ProtectedRoute>
             }
@@ -140,7 +141,7 @@ const App = () => {
             element={<GoldenBellArena />}
           />
 
-          <Route path="/teacher/demo" element={<GoldenBellDemoTeacher />} />
+          <Route path="/teacher/demo" element={<Navigate to="/teacher" replace />} />
           <Route path="/xep-hang" element={<GoldenBellRanking />} />
           <Route
             path="/teacher"
