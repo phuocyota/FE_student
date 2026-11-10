@@ -20,7 +20,7 @@ export default function RankingParticipants({ ranking, canManage, onSelect, onDr
             <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filter === value ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-green-50"}`}>{label}</button>
           ))}
         </div>
-        {canManage && canChooseRanks && <p className="rounded-lg bg-green-50 px-3 py-2 text-xs leading-5 text-green-800">Kéo thí sinh vào vị trí trên bục hoặc bấm nút chọn hạng 1, 2, 3. Thay đổi được cập nhật trực tiếp lên sân thi đấu.</p>}
+        {canManage && canChooseRanks && <p className="rounded-lg bg-green-50 px-3 py-2 text-xs leading-5 text-green-800">Kéo thí sinh vào vị trí trên bục hoặc bấm nút chọn hạng 1, 2, 3. Chỉnh xong bấm Chốt & gửi kết quả để cập nhật sân thi đấu.</p>}
       </div>
       <div className="max-h-[640px] space-y-2 overflow-y-auto p-3">
         {!shown.length ? <p className="py-8 text-center text-sm text-gray-500">Không có thí sinh phù hợp.</p> : shown.map((student) => (

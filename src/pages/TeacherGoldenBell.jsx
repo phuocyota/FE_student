@@ -34,6 +34,7 @@ import StudentAvatar from "../components/GoldenBell/StudentAvatar";
 import { openGoldenBellRanking, podiumSelectionsKey, withEliminationHistory } from "../utils/goldenBellRanking";
 import { reviveGoldenBellStudentOnServer } from "../api/goldenBell";
 import { isWaitingAfterGoldenBellRevival } from "../utils/goldenBellRevival";
+import useGoldenBellWinnerCompletion from "../hooks/useGoldenBellWinnerCompletion";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -137,6 +138,7 @@ const TeacherGoldenBell = () => {
   const [isOutOfQuestions, setIsOutOfQuestions] = useState(false);
 
   const socketRef = useRef(null);
+  const endingRoomRef = useRef(false);
   const roomRef = useRef(room);
   const questionBankMenuRef = useRef(null);
 
@@ -380,14 +382,16 @@ const TeacherGoldenBell = () => {
       nextRoom = withEliminationHistory(roomRef.current, nextRoom);
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
-        if (nextRoom.status === "FINISHED") {
+        if (nextRoom.status === "FINISHED" && endingRoomRef.current) {
           const finalRoom = { ...roomRef.current, ...nextRoom };
           if (!finalRoom.questionNo) finalRoom.questionNo = roomRef.current.questionNo;
           roomRef.current = finalRoom;
           setRoom(finalRoom);
           return;
         }
-        setRoom(createEmptyRoom("", questionBankId));
+        const emptyRoom = createEmptyRoom("", questionBankId);
+        roomRef.current = emptyRoom;
+        setRoom(emptyRoom);
         navigate(`/teacher/${questionBankId}`, { replace: true });
         if (nextRoom.status === "EXPIRED") {
           toast.error("Phòng đã hết hạn sau 24 giờ");
@@ -644,11 +648,13 @@ const TeacherGoldenBell = () => {
     if (!shouldEndRoom) return;
 
     setIsEndingRoom(true);
+    endingRoomRef.current = true;
     socketRef.current.timeout(8000).emit(
       "golden-bell:end-room",
       { roomId },
       (error, response) => {
         setIsEndingRoom(false);
+        endingRoomRef.current = false;
 
         if (error || !response?.ok) {
           toast.error(response?.message || "Không thể kết thúc phòng");
@@ -659,10 +665,30 @@ const TeacherGoldenBell = () => {
         roomRef.current = finalRoom;
         setRoom(finalRoom);
         toast.success("Sàn đấu đã kết thúc. Thầy/Cô có 1 phút để điều chỉnh thứ hạng.");
-        openGoldenBellRanking(navigate, { ...finalRoom, questionBankName, teacherName: teacher.name }, `/teacher/${questionBankId}?room=${roomId}`);
+        openGoldenBellRanking(navigate, { ...finalRoom, questionBankName, teacherName: teacher.name }, `/teacher/${questionBankId}`);
       }
     );
   };
+
+  useGoldenBellWinnerCompletion({
+    room, socketRef, connection: socketStatus, enabled: Boolean(teacher.token) && !isEndingRoom,
+    onStart: () => {
+      endingRoomRef.current = true;
+      setIsEndingRoom(true);
+    },
+    onFinished: (finalRoom) => {
+      endingRoomRef.current = false;
+      setIsEndingRoom(false);
+      roomRef.current = finalRoom;
+      setRoom(finalRoom);
+      openGoldenBellRanking(navigate, { ...finalRoom, questionBankName, teacherName: teacher.name }, `/teacher/${questionBankId}`);
+    },
+    onError: (failure) => {
+      endingRoomRef.current = false;
+      setIsEndingRoom(false);
+      toast.error(failure.message);
+    },
+  });
 
   const handleCopyStudentLink = async () => {
     if (!roomId) return;
@@ -944,6 +970,7 @@ const TeacherGoldenBell = () => {
           </div>
         )}
 
+        {roomId && <>
         <div className="mb-4 grid gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <p className="text-sm text-gray-500">Mã phòng</p>
@@ -1153,9 +1180,15 @@ const TeacherGoldenBell = () => {
             </div>
           </aside>
         </div>
+        </>}
       </div>
     </div>
   );
 };
 
-export default TeacherGoldenBell;
+export default function TeacherGoldenBellPage() {
+  const { id } = useParams();
+  const [params] = useSearchParams();
+  // A different room (including no room) starts with a fresh control panel.
+  return <TeacherGoldenBell key={`${id || ""}:${params.get("room") || ""}`} />;
+}
