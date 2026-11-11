@@ -37,16 +37,16 @@ export const updateStudentProfile = async (userId, data) => {
   return parseResponse(res);
 };
 
-export const getUserById = async (userId) => {
-  const res = await fetch(API.STUDENT.DETAIL(userId));
+export const getUserById = async (userId, options = {}, token) => {
+  const res = await fetch(API.STUDENT.DETAIL(userId), options, token);
 
   return parseResponse(res);
 };
 
 
 // giấy chứng nhận 
-export const getCurrentUser = async () => {
-  const res = await fetch(API.STUDENT.ME);
+export const getCurrentUser = async (options = {}) => {
+  const res = await fetch(API.STUDENT.ME, options);
   return parseResponse(res);
 };
 

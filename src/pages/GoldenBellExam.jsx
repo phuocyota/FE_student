@@ -12,6 +12,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
+import { getCurrentUser } from "../api/student";
 import GoldenBellExamCelebration from "../components/GoldenBellExam/GoldenBellExamCelebration";
 import { getGoldenBellWinner } from "../utils/goldenBellWinner";
 import { isWaitingAfterGoldenBellRevival } from "../utils/goldenBellRevival";
@@ -249,11 +250,32 @@ const GoldenBellRoom = ({ roomId }) => {
     let hasJoinedRoom = false;
     let joinRevision = 0;
     let disposed = false;
+    let profile = null;
+    const profileController = new AbortController();
+    const profileTimeout = window.setTimeout(() => profileController.abort(), 5000);
+    const profileReady = getCurrentUser({ signal: profileController.signal })
+      .then((response) => {
+        if (disposed) return;
+        profile = response?.data?.data ?? response?.data ?? response;
+        if (!profile || typeof profile !== "object") {
+          profile = null;
+          return;
+        }
+        localStorage.setItem("studentAvatar", profile.avatar || "");
+        localStorage.setItem("studentSchoolName", profile.schoolName || "");
+        localStorage.setItem("studentClassName", profile.className || "");
+      })
+      .catch((error) => {
+        if (!disposed) console.error("Unable to refresh Golden Bell profile:", error);
+      })
+      .finally(() => window.clearTimeout(profileTimeout));
 
-    const handleConnect = () => {
+    const handleConnect = async () => {
       const revision = ++joinRevision;
       setSocketStatus("connecting");
       setConnectionError("");
+      await profileReady;
+      if (disposed || revision !== joinRevision || !socket.connected) return;
       socket.timeout(8000).emit(
         "golden-bell:join",
         {
@@ -261,7 +283,7 @@ const GoldenBellRoom = ({ roomId }) => {
           student: {
             id: studentId,
             name: studentName,
-            avatar: roomRef.current.students.find((student) => student.id === studentId)?.avatar || localStorage.getItem("studentAvatar") || "",
+            avatar: profile ? profile.avatar || "" : localStorage.getItem("studentAvatar") || roomRef.current.students.find((student) => student.id === studentId)?.avatar || "",
             schoolName: localStorage.getItem("studentSchoolName") || "",
             className: localStorage.getItem("studentClassName") || "",
             joinedAt: new Date().toISOString(),
@@ -302,6 +324,15 @@ const GoldenBellRoom = ({ roomId }) => {
       setRoomError("");
       setConnectionError("");
       nextRoom = withEliminationHistory(roomRef.current, nextRoom);
+      // Existing server room entries can still contain the profile from the first join.
+      if (profile) {
+        nextRoom = {
+          ...nextRoom,
+          students: nextRoom.students.map((student) => student.id === studentId
+            ? { ...student, avatar: profile.avatar || "", schoolName: profile.schoolName || "", className: profile.className || "" }
+            : student),
+        };
+      }
 
       if (nextRoom.status === "FINISHED" || nextRoom.status === "EXPIRED") {
         const finalRoom = {
@@ -344,6 +375,8 @@ const GoldenBellRoom = ({ roomId }) => {
 
     return () => {
       disposed = true;
+      profileController.abort();
+      window.clearTimeout(profileTimeout);
       retryConnectionRef.current = null;
       socket.emit("golden-bell:leave", { roomId });
       socket.off("connect", handleConnect);

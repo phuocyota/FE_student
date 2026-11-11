@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Copy,
   ExternalLink,
+  LayoutGrid,
   Loader2,
   LogOut,
   Play,
@@ -28,6 +29,7 @@ import {
 } from "../api/questionBank";
 import { createAppSocket } from "../api/socket";
 import TeacherGoldenBellCelebration from "../components/TeacherGoldenBell/TeacherGoldenBellCelebration";
+import GoldenBellSeatingEditor from "../components/TeacherGoldenBell/GoldenBellSeatingEditor";
 import { getGoldenBellWinner } from "../utils/goldenBellWinner";
 import GoldenBellWinnerBadge from "../components/GoldenBell/GoldenBellWinnerBadge";
 import StudentAvatar from "../components/GoldenBell/StudentAvatar";
@@ -136,6 +138,7 @@ const TeacherGoldenBell = () => {
   const [revivingStudentId, setRevivingStudentId] = useState(null);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isOutOfQuestions, setIsOutOfQuestions] = useState(false);
+  const [isSeatingOpen, setIsSeatingOpen] = useState(false);
 
   const socketRef = useRef(null);
   const endingRoomRef = useRef(false);
@@ -1020,6 +1023,10 @@ const TeacherGoldenBell = () => {
                     <ExternalLink size={16} />
                     Mở sân thi đấu
                   </button>
+                  <button type="button" onClick={() => setIsSeatingOpen(true)} disabled={!roomId} className="inline-flex items-center gap-2 rounded-lg border border-violet-300 px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-60">
+                    <LayoutGrid size={16} />
+                    Sơ đồ chỗ ngồi
+                  </button>
                   <button
                     type="button"
                     onClick={handleResetRoom}
@@ -1129,7 +1136,7 @@ const TeacherGoldenBell = () => {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
-                            <StudentAvatar student={student} />
+                            <StudentAvatar student={student} token={teacher.token} />
                             <div>
                             <p className="font-semibold text-gray-900">{student.name}</p>
                             {(student.className || student.schoolName) && <p className="text-xs text-gray-500">{[student.className, student.schoolName].filter(Boolean).join(" · ")}</p>}
@@ -1181,6 +1188,7 @@ const TeacherGoldenBell = () => {
           </aside>
         </div>
         </>}
+        {isSeatingOpen && <GoldenBellSeatingEditor roomId={roomId} students={students} token={teacher.token} onClose={() => setIsSeatingOpen(false)} />}
       </div>
     </div>
   );

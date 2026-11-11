@@ -5,6 +5,9 @@ import { buildAssetUrl } from "../api/client";
 import { createAppSocket } from "../api/socket";
 import GoldenBellArenaCelebration from "../components/GoldenBellArena/GoldenBellArenaCelebration";
 import GoldenBellArenaStudentCard from "../components/GoldenBellArena/GoldenBellArenaStudentCard";
+import useGoldenBellSeating from "../hooks/useGoldenBellSeating";
+import { orderSeatedStudents } from "../utils/goldenBellSeating";
+import "./GoldenBellArena.css";
 import { getGoldenBellWinner } from "../utils/goldenBellWinner";
 import { getGoldenBellRanking } from "../utils/goldenBellRanking";
 import RankingPodium from "../components/GoldenBellRanking/RankingPodium";
@@ -53,6 +56,8 @@ const GoldenBellArena = () => {
   const socketRef = useRef(null);
 
   const students = useMemo(() => toArray(room.students), [room.students]);
+  const seating = useGoldenBellSeating(roomId);
+  const seatedStudents = useMemo(() => orderSeatedStudents(students, seating), [students, seating]);
   const ranking = useMemo(() => getGoldenBellRanking(room), [room]);
   const winner = room.status === "FINISHED" ? ranking.find((student) => student.isWinner) : getGoldenBellWinner(room);
   const activeCount = students.filter(
@@ -210,7 +215,7 @@ const GoldenBellArena = () => {
             key={item.id}
             src={buildAssetUrl(item.content)}
             alt=""
-            className="max-h-56 rounded-lg border border-gray-200 object-contain"
+            className="arena-content-image"
           />
         );
       }
@@ -231,101 +236,112 @@ const GoldenBellArena = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 via-gray-100 to-white text-gray-900">
+    <div className={`arena-page min-h-screen bg-gradient-to-b from-green-50 via-gray-100 to-white text-gray-900 ${room.status === "FINISHED" ? "arena-page--finished" : ""}`}>
       <GoldenBellArenaCelebration room={room} roomId={roomId} />
       {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Phòng thi đã kết thúc.</p>}
       {room.status === "FINISHED" && <div className="mx-auto w-full max-w-5xl px-4 py-6" aria-live="polite"><RankingPodium ranking={ranking} /></div>}
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="mb-6 flex flex-col items-center gap-5 border-b border-green-200 pb-6 text-center">
+      <div className="arena-shell">
+        <header className="arena-header text-center">
           <div>
             <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wide text-green-700 sm:text-sm">
               <Bell size={18} />
               Đấu trường kiến thức Rung chuông vàng
             </div>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+            <h1 className="arena-title font-bold tracking-tight text-gray-900">
               Sàn thi đấu trực tuyến
             </h1>
           </div>
 
-          <div className="grid w-full max-w-xl grid-cols-3 gap-2 text-center sm:gap-3">
-            <div className="rounded-xl border border-green-200 bg-white px-2 py-3 shadow-sm sm:px-5">
+        </header>
+          <div className="arena-status grid grid-cols-3 gap-2 text-center sm:gap-3">
+            <div className="arena-status-item rounded-xl border border-green-200 bg-white shadow-sm">
               <p className="text-xs font-bold uppercase text-gray-500">Câu hiện tại</p>
               <p className="text-2xl font-black text-green-700">
                 {room.questionNo || 0}
               </p>
             </div>
-            <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-2 py-3 shadow-sm sm:px-5">
+            <div className="arena-status-item rounded-xl border border-yellow-200 bg-yellow-50 shadow-sm">
               <p className="text-xs font-bold uppercase text-gray-500">Cứu trợ</p>
               <p className="flex items-center justify-center gap-2 text-sm font-bold text-yellow-700">
                 <Gift size={16} />
                 Sẵn sàng
               </p>
             </div>
-            <div className="rounded-xl border border-red-200 bg-white px-2 py-3 shadow-sm sm:px-5">
+            <div className="arena-status-item rounded-xl border border-red-200 bg-white shadow-sm">
               <p className="text-xs font-bold uppercase text-gray-500">Đồng hồ</p>
               <p className="font-mono text-2xl font-black text-red-600">
                 00:{String(remainingSeconds).padStart(2, "0")}
               </p>
             </div>
           </div>
-        </header>
-
-        <main className="grid flex-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
-          <section aria-label="Nội dung câu hỏi" className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="mb-5 inline-flex rounded-md bg-yellow-400 px-4 py-2 text-xs font-black uppercase tracking-wide text-gray-900">
+        <main className="arena-main">
+          <section aria-label="Nội dung câu hỏi" className="arena-card arena-question-card rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="arena-category inline-flex rounded-md bg-yellow-400 px-3 py-1.5 text-xs font-black uppercase tracking-wide text-gray-900">
               Lĩnh vực: Trắc nghiệm
             </div>
 
             {room.currentQuestion ? (
-              <>
-                <div className="mb-8 text-2xl font-normal leading-9 text-gray-900">
-                  {renderContent(
-                    questionContent,
-                    "text-2xl font-normal leading-9 text-gray-900"
+              <div className={`arena-question-body ${questionContent.some((item) => item.contentType === "IMAGE" || item.contentType === "AUDIO") ? "arena-question-body--media" : ""}`}>
+                <div className="arena-question-stage">
+                  <div className="arena-question-text">
+                    {renderContent(
+                      questionContent.filter((item) => item.contentType === "TEXT"),
+                      "arena-question-paragraph"
+                    )}
+                  </div>
+                  {questionContent.some((item) => item.contentType === "IMAGE" || item.contentType === "AUDIO") && (
+                    <div className="arena-question-media">
+                      {questionContent.filter((item) => item.contentType !== "TEXT").map((item) => (
+                        <div key={item.id} className={`arena-media-item ${item.contentType === "AUDIO" ? "arena-media-item--audio" : ""}`}>{renderContent([item])}</div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className={`arena-answers ${answers.length > 2 ? "arena-answers--multiple" : ""}`}>
                   {answers.map((answer, index) => {
                     const showCorrectAnswer = isTimeUp && answer.isCorrect;
+                    const answerContent = buildContentChain(answer);
+                    const answerImages = answerContent.filter((item) => item.contentType === "IMAGE");
 
                     return (
                       <div
                         key={answer.id}
-                        className={`flex min-h-20 items-center gap-4 rounded-xl border px-5 py-4 shadow-sm transition-colors ${
+                        className={`arena-answer rounded-xl border shadow-sm transition-colors ${
                           showCorrectAnswer
                             ? "border-green-500 bg-green-50 ring-2 ring-green-200"
                             : "border-gray-200 bg-white"
                         }`}
                       >
-                        <div
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-black ${
-                            showCorrectAnswer
-                              ? "border-green-600 bg-green-600 text-white"
-                              : "border-green-600 bg-green-50 text-green-700"
-                          }`}
-                        >
-                          {String.fromCharCode(65 + index)}
+                        <div className="arena-answer-heading">
+                          <span className={`arena-answer-letter ${showCorrectAnswer ? "text-green-700" : "text-gray-800"}`}>
+                            {String.fromCharCode(65 + index)}.
+                          </span>
+                          <div className="arena-answer-content min-w-0 text-gray-800">
+                            {renderContent(
+                              answerContent.filter((item) => item.contentType !== "IMAGE"),
+                              "arena-answer-text"
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1 text-base font-bold text-gray-800">
-                          {showCorrectAnswer && (
-                            <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-1 text-xs font-bold text-white">
-                              <CheckCircle2 size={14} />
-                              Đáp án đúng
-                            </div>
-                          )}
-                          {renderContent(
-                            buildContentChain(answer),
-                            "text-base font-bold text-gray-800"
-                          )}
-                        </div>
+                        {answerImages.length > 0 && (
+                          <div className="arena-answer-media">
+                            {renderContent(answerImages)}
+                          </div>
+                        )}
+                        {showCorrectAnswer && (
+                          <span className="arena-answer-correct-badge inline-flex items-center gap-1 rounded-full bg-green-600 text-xs font-bold text-white">
+                            <CheckCircle2 size={12} aria-hidden="true" />
+                            Đáp án đúng
+                          </span>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-              </>
+              </div>
             ) : (
-              <div className="flex min-h-64 flex-col items-center justify-center text-center">
+              <div className="arena-empty flex flex-col items-center justify-center text-center">
                 <Bell className="mb-4 text-yellow-500" size={52} />
                 <p className="text-2xl font-normal">
                   {roomError || "Chờ giáo viên phát câu hỏi"}
@@ -339,8 +355,8 @@ const GoldenBellArena = () => {
             )}
           </section>
 
-          <section aria-label="Danh sách thí sinh" className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="mb-4 flex flex-col gap-3 border-b border-gray-200 pb-4">
+          <section aria-label="Danh sách thí sinh" className="arena-card arena-students-card rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="arena-students-header flex flex-col gap-2 border-b border-gray-200 pb-3">
               <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-green-700">
                 <Users size={18} />
                 Thí sinh trong phòng
@@ -353,9 +369,6 @@ const GoldenBellArena = () => {
               </div>
 
               <div className="flex flex-wrap gap-2 text-xs font-bold">
-                <span className="rounded border border-green-200 bg-green-50 px-2 py-1 text-green-700">
-                  Đang đấu
-                </span>
                 <span className="rounded border border-gray-200 bg-gray-100 px-2 py-1 text-gray-700">
                   Hạ bảng: {eliminatedCount}
                 </span>
@@ -366,13 +379,13 @@ const GoldenBellArena = () => {
             </div>
 
             {students.length === 0 ? (
-              <div className="flex min-h-28 flex-col items-center justify-center text-center text-gray-500">
+              <div className="arena-empty flex flex-col items-center justify-center text-center text-gray-500">
                 <Users className="mb-2 text-gray-400" size={30} />
                 <p className="text-sm font-medium">Chưa có học sinh tham gia phòng.</p>
               </div>
             ) : (
-              <div className="grid max-h-[65vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 lg:grid-cols-2">
-                {students.map((student) => (
+              <div className={`arena-students-grid ${seating.isConfigured ? "arena-students-grid--seated" : ""}`} style={seating.isConfigured ? { "--seat-columns": seating.columns } : undefined}>
+                {seatedStudents.map((student) => (
                     <GoldenBellArenaStudentCard
                       key={student.id}
                       student={student}
@@ -384,6 +397,7 @@ const GoldenBellArena = () => {
             )}
           </section>
         </main>
+        <footer className="arena-footer" aria-hidden="true" />
       </div>
     </div>
   );
