@@ -139,7 +139,7 @@ try {
   }), true, "Image answers remain inside their card");
   assert.ok(await page.locator(".arena-answer-media img").evaluate((node) => {
     const height = node.getBoundingClientRect().height;
-    return height >= 140 && height <= 180;
+    return height >= 138 && height <= 180;
   }), "Answer image should be enlarged within responsive bounds");
   await page.screenshot({ path: join(screenshotDir, "image-answer.png"), fullPage: true });
   for (const width of [1366, 900, 820, 390, 320]) {
@@ -168,7 +168,7 @@ try {
               if (!media) return true;
               const image = media.getBoundingClientRect();
               const heading = node.querySelector(".arena-answer-heading").getBoundingClientRect();
-              return image.top >= heading.bottom + 10 && image.width <= 240 && image.height >= 140 && image.height <= 180 && [...media.querySelectorAll("img")].every((img) => getComputedStyle(img).objectFit === "contain");
+              return image.top >= heading.bottom + 10 && image.right <= node.getBoundingClientRect().right && image.height >= 140 && image.height <= 180 && [...media.querySelectorAll("img")].every((img) => getComputedStyle(img).objectFit === "contain" && img.getBoundingClientRect().width <= 240);
             }),
             columns: getComputedStyle(document.querySelector(".arena-answers")).gridTemplateColumns.split(" ").length,
           };

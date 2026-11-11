@@ -309,7 +309,7 @@ const GoldenBellArena = () => {
                         key={answer.id}
                         className={`arena-answer rounded-xl border shadow-sm transition-colors ${
                           showCorrectAnswer
-                            ? "border-green-500 bg-green-50 ring-2 ring-green-200"
+                            ? "arena-answer--correct border-green-500 bg-green-50 ring-2 ring-green-200"
                             : "border-gray-200 bg-white"
                         }`}
                       >
