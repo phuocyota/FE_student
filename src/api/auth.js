@@ -12,6 +12,8 @@ export const registerStudent = async ({ photo, ...student }) => {
 
 export const getRegistrationSchools = () => apiRequest("/auth/register/student/schools", { skipAuth: true });
 export const getHcmRegistrationSchools = () => apiRequest("/auth/register/student/zones/HCM/schools", { skipAuth: true });
+export const getRegistrationZones = () => apiRequest("/auth/register/student/zones", { skipAuth: true });
+export const getZoneRegistrationSchools = (zoneId) => apiRequest(`/auth/register/student/zones/${encodeURIComponent(zoneId)}/schools`, { skipAuth: true });
 export const getRegistrationClasses = (schoolId) => apiRequest(`/auth/register/student/schools/${encodeURIComponent(schoolId)}/classes`, { skipAuth: true });
 
 export const loginStudent = ({ username, password, deviceId }) =>

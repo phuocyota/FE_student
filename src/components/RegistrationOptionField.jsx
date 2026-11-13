@@ -5,7 +5,7 @@ export const NEW_REGISTRATION_OPTION = "__new__";
 const normalize = (text) => text.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase("vi");
 const searchable = (text) => normalize(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-export default function RegistrationOptionField({ id, label, options, value, name, onChange, loading = false, disabled = false, showCreateOption = true }) {
+export default function RegistrationOptionField({ id, label, options, value, name, onChange, loading = false, disabled = false, showCreateOption = true, disabledHint = "Nhập hoặc chọn trường trước khi chọn lớp." }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const text = value === NEW_REGISTRATION_OPTION ? name : options.find((option) => option.id === value)?.name || "";
@@ -88,11 +88,11 @@ export default function RegistrationOptionField({ id, label, options, value, nam
             ))}
           </ul>
           {loading && <p role="status" className="px-4 py-3 text-sm text-gray-500">Đang tải danh sách...</p>}
-          {!loading && !choices.length && <p className="px-4 py-3 text-sm text-gray-500">Chưa có {label.toLowerCase()}. Nhập tên để tạo mới.</p>}
+          {!loading && !choices.length && <p className="px-4 py-3 text-sm text-gray-500">Chưa có {label.toLowerCase()} phù hợp.{showCreateOption && " Nhập tên để tạo mới."}</p>}
         </div>
       )}
       <p id={`${id}-hint`} className="mt-1 text-xs text-gray-500">
-        {disabled ? "Nhập hoặc chọn trường trước khi chọn lớp." : value === NEW_REGISTRATION_OPTION && text.trim() && !exactMatches.length ? `${label} mới sẽ được tạo khi đăng ký thành công.` : `Tìm và chọn ${label.toLowerCase()} có sẵn, hoặc nhập tên mới nếu chưa có.`}
+        {disabled ? disabledHint : !showCreateOption ? `Tìm và chọn ${label.toLowerCase()} có sẵn trong danh sách.` : value === NEW_REGISTRATION_OPTION && text.trim() && !exactMatches.length ? `${label} mới sẽ được tạo khi đăng ký thành công.` : `Tìm và chọn ${label.toLowerCase()} có sẵn, hoặc nhập tên mới nếu chưa có.`}
       </p>
     </div>
   );

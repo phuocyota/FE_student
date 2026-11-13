@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getHcmRegistrationSchools, registerStudent } from "../api/auth";
+import { getRegistrationZones, getZoneRegistrationSchools, registerStudent } from "../api/auth";
 import RegistrationOptionField, { NEW_REGISTRATION_OPTION } from "./RegistrationOptionField";
+import RegistrationZoneField from "./RegistrationZoneField";
 
 const fields = [
   { name: "fullName", label: "Họ và tên", placeholder: "Nhập họ và tên học sinh", autoComplete: "name", maxLength: 150 },
@@ -21,10 +22,13 @@ const cameraErrorMessage = (error) => {
 export default function StudentRegistration({ onBack }) {
   const navigate = useNavigate();
   const [registeredUsername, setRegisteredUsername] = useState("");
-  const [form, setForm] = useState({ fullName: "", schoolId: "", classId: "", schoolName: "", className: "", phoneNumber: "" });
+  const [form, setForm] = useState({ fullName: "", zoneId: "", schoolId: "", classId: "", schoolName: "", className: "", phoneNumber: "" });
+  const [zones, setZones] = useState([]);
+  const [zonesLoading, setZonesLoading] = useState(true);
+  const [zonesError, setZonesError] = useState("");
   const [schools, setSchools] = useState([]);
   const classes = schools.find((school) => school.id === form.schoolId)?.classes || [];
-  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState("");
   const [optionsRevision, setOptionsRevision] = useState(0);
   const [photo, setPhoto] = useState(null);
@@ -40,18 +44,33 @@ export default function StudentRegistration({ onBack }) {
 
   useEffect(() => {
     let cancelled = false;
+    setZonesLoading(true);
+    setZonesError("");
+    getRegistrationZones().then((response) => {
+      const data = response?.data ?? response;
+      if (!Array.isArray(data) || data.some((zone) => !zone?.id || !zone?.name)) throw new Error("Dữ liệu khu vực không hợp lệ.");
+      if (!cancelled) setZones(data);
+    }).catch((failure) => {
+      if (!cancelled) setZonesError(failure.message || "Không thể tải khu vực.");
+    }).finally(() => { if (!cancelled) setZonesLoading(false); });
+    return () => { cancelled = true; };
+  }, [optionsRevision]);
+
+  useEffect(() => {
+    if (!form.zoneId) return;
+    let cancelled = false;
     setOptionsLoading(true);
     setOptionsError("");
-    getHcmRegistrationSchools().then((response) => {
+    getZoneRegistrationSchools(form.zoneId).then((response) => {
       const data = response?.data ?? response;
-      if (!Array.isArray(data?.schools) || data.schools.some((school) => !school?.id || !school?.name || !Array.isArray(school.classes))) throw new Error("Dữ liệu trường/lớp HCM không hợp lệ.");
+      if (!Array.isArray(data?.schools) || data.schools.some((school) => !school?.id || !school?.name || !Array.isArray(school.classes))) throw new Error("Dữ liệu trường/lớp không hợp lệ.");
       if (cancelled) return;
       setSchools(data.schools);
     }).catch((failure) => {
       if (!cancelled) setOptionsError(failure.message || "Không thể tải trường/lớp.");
     }).finally(() => { if (!cancelled) setOptionsLoading(false); });
     return () => { cancelled = true; };
-  }, [optionsRevision]);
+  }, [form.zoneId, optionsRevision]);
 
   useEffect(() => () => {
     cameraRequestRef.current += 1;
@@ -155,7 +174,11 @@ export default function StudentRegistration({ onBack }) {
     if (isSubmitting) return;
     setError("");
     const values = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, value.trim()]));
-    if ([values.fullName, values.schoolId, values.classId].some((value) => !value)) {
+    if (optionsLoading || optionsError || !zones.some((zone) => zone.id === values.zoneId) || !schools.some((school) => school.id === values.schoolId)) {
+      setError("Vui lòng chọn khu vực và trường trong danh sách đã tải.");
+      return;
+    }
+    if ([values.fullName, values.zoneId, values.schoolId, values.classId].some((value) => !value)) {
       setError("Vui lòng điền đầy đủ thông tin đăng ký.");
       return;
     }
@@ -245,12 +268,23 @@ export default function StudentRegistration({ onBack }) {
               <input {...inputProps} id={`register-${name}`} name={name} value={form[name]} onChange={(event) => setForm((current) => ({ ...current, [name]: event.target.value }))} required={name !== "phoneNumber"} className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-600" />
             </div>
           ))}
-          <RegistrationOptionField id="register-school" label="Trường" options={schools} value={form.schoolId} name={form.schoolName} loading={optionsLoading} showCreateOption={false} onChange={(schoolId, schoolName) => setForm((current) => ({ ...current, schoolId, schoolName, classId: "", className: "" }))} />
-          <RegistrationOptionField id="register-class" label="Lớp" options={classes} value={form.classId} name={form.className} loading={optionsLoading} disabled={!form.schoolId} onChange={(classId, className) => setForm((current) => ({ ...current, classId, className }))} />
+          <div>
+            <RegistrationZoneField options={zones} value={form.zoneId} loading={zonesLoading} disabled={!!zonesError} onChange={(zoneId) => {
+              setForm((current) => ({ ...current, zoneId, schoolId: "", schoolName: "", classId: "", className: "" }));
+              setSchools([]);
+              setOptionsError("");
+              setOptionsLoading(!!zoneId);
+              setError("");
+            }} />
+            {!zonesLoading && !zonesError && !zones.length && <p className="mt-1 text-sm text-gray-500">Chưa có khu vực đăng ký.</p>}
+            {zonesError && <p role="alert" className="mt-1 text-sm text-red-600">{zonesError} <button type="button" onClick={() => setOptionsRevision((value) => value + 1)} className="font-semibold underline">Tải lại</button></p>}
+          </div>
+          <RegistrationOptionField id="register-school" label="Trường" options={schools} value={form.schoolId} name={form.schoolName} loading={optionsLoading} disabled={!form.zoneId || optionsLoading || !!optionsError} disabledHint="Chọn khu vực và chờ tải danh sách trường." showCreateOption={false} onChange={(schoolId, schoolName) => setForm((current) => ({ ...current, schoolId, schoolName, classId: "", className: "" }))} />
+          <RegistrationOptionField id="register-class" label="Lớp" options={classes} value={form.classId} name={form.className} loading={optionsLoading} disabled={!schools.some((school) => school.id === form.schoolId) || optionsLoading || !!optionsError} onChange={(classId, className) => setForm((current) => ({ ...current, classId, className }))} />
           {optionsError && <p role="alert" className="text-sm text-red-600">{optionsError} <button type="button" onClick={() => setOptionsRevision((value) => value + 1)} className="font-semibold underline">Tải lại</button></p>}
         </fieldset>
         {error && <p role="alert" className="text-center text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={isSubmitting || cameraState !== "off" || !form.schoolId || !form.classId} className="w-full rounded-xl bg-green-700 py-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Đang gửi đăng ký..." : "Đăng ký"}</button>
+        <button type="submit" disabled={isSubmitting || cameraState !== "off" || zonesLoading || !!zonesError || optionsLoading || !!optionsError || !form.zoneId || !schools.some((school) => school.id === form.schoolId) || !form.classId} className="w-full rounded-xl bg-green-700 py-3 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Đang gửi đăng ký..." : "Đăng ký"}</button>
         <button type="button" disabled={isSubmitting} onClick={onBack} className="w-full py-2 text-sm font-semibold text-green-700 hover:underline disabled:opacity-60">Đã có tài khoản? Đăng nhập</button>
       </form>
     </>
