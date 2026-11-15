@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Trophy,
   Users,
+  X,
   XCircle,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -23,8 +24,15 @@ import {
   buildContentChain,
   getQuestionAnswerOptions,
 } from "../utils/questionContent";
+import {
+  GOLDEN_BELL_QUESTION_SECONDS,
+  applyGoldenBellAnswer,
+  getDisplayedGoldenBellStudents,
+  getGoldenBellStudentAnswer,
+  isGoldenBellAnswerPending,
+} from "../utils/goldenBellAnswerReveal";
 
-const QUESTION_SECONDS = 15;
+const QUESTION_SECONDS = GOLDEN_BELL_QUESTION_SECONDS;
 
 const getRemainingSeconds = (room) => {
   if (!room?.currentQuestion || room.questionEndedAt) return 0;
@@ -157,6 +165,7 @@ const GoldenBellRoom = ({ roomId }) => {
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [roomError, setRoomError] = useState("");
   const [connectionError, setConnectionError] = useState("");
+  const [isStudentListOpen, setIsStudentListOpen] = useState(false);
 
   const socketRef = useRef(null);
   const roomRef = useRef(room);
@@ -168,15 +177,33 @@ const GoldenBellRoom = ({ roomId }) => {
   const answers = useMemo(() => {
     return getQuestionAnswerOptions(question);
   }, [question]);
+  // When any answer has an image, give the answer grid more room so images can be shown large.
+  const hasImageAnswers = useMemo(
+    () => answers.some((answer) => buildContentChain(answer).some((item) => item.contentType === "IMAGE")),
+    [answers],
+  );
 
   const currentStudent = room.students.find((student) => student.id === studentId);
+  // Until the teacher reveals the answer, results of the current question are hidden from everyone.
+  const isAnswerPending = isGoldenBellAnswerPending(room);
+  const displayedStudents = useMemo(() => getDisplayedGoldenBellStudents(room), [room]);
+  const displayedCurrentStudent = displayedStudents.find((student) => student.id === studentId);
   const winner = getGoldenBellWinner(room);
   const isCurrentStudentWinner = winner?.id === studentId;
-  const hasSelected = Boolean(selectedAnswer);
-  const isCorrect = Boolean(selectedAnswer?.isCorrect);
-  const isEliminated = currentStudent?.status === "eliminated";
+  // The answer already synced for this question, so a reload cannot answer twice.
+  const savedAnswer = getGoldenBellStudentAnswer(currentStudent, room.currentQuestion ? room.questionNo : 0);
+  const effectiveSelectedAnswer = selectedAnswer || (savedAnswer
+    ? answers.find((answer) => answer.id === savedAnswer.answerId) || { id: savedAnswer.answerId, isCorrect: savedAnswer.isCorrect }
+    : null);
+  const hasSelected = Boolean(effectiveSelectedAnswer);
+  const isCorrect = Boolean(effectiveSelectedAnswer?.isCorrect);
+  const selectedAnswerIndex = answers.findIndex((answer) => answer.id === effectiveSelectedAnswer?.id);
+  const showAnswerResult = hasSelected && !isAnswerPending;
+  const isEliminated = displayedCurrentStudent?.status === "eliminated";
   const isWaitingForNextQuestion = isWaitingAfterGoldenBellRevival(currentStudent, room.questionNo);
   const isQuestionClosed = Boolean(room.questionEndedAt) || Boolean(room.currentQuestion && remainingSeconds <= 0) || room.status === "FINISHED" || room.status === "EXPIRED";
+  // Students may change their answer until time is up or the teacher reveals the answer.
+  const canChangeAnswer = hasSelected && isAnswerPending && !isQuestionClosed;
   const previousStudentStatusRef = useRef(currentStudent?.status);
   const handledRevivalRef = useRef(currentStudent?.revivalCount || 0);
 
@@ -192,17 +219,18 @@ const GoldenBellRoom = ({ roomId }) => {
     toast.success("Bạn đã được hồi sinh! Chờ câu hỏi kế tiếp để tiếp tục thi đấu.", { duration: 5000 });
   }, [currentStudent?.revivalCount, currentStudent?.status, studentId]);
   const joinedCount = room.students.length;
-  const passedCount = room.students.filter(
+  const passedCount = displayedStudents.filter(
     (student) => student.status === "passed" && student.lastQuestionNo === questionNo && (student.resumeFromQuestionNo || 0) <= questionNo
   ).length;
-  const eliminatedCount = room.students.filter(
+  const eliminatedCount = displayedStudents.filter(
     (student) => student.status === "eliminated"
   ).length;
-  const studentStatusLabel = currentStudent
-    ? currentStudent.status === "eliminated"
+  const studentStatusLabel = displayedCurrentStudent
+    ? displayedCurrentStudent.status === "eliminated"
       ? "Đã hạ bảng"
       : isWaitingForNextQuestion ? "Đã hồi sinh · Chờ câu tiếp theo"
-      : currentStudent.status === "passed"
+      : displayedCurrentStudent.hasPendingAnswer ? "Đã chọn đáp án · Chờ công bố"
+      : displayedCurrentStudent.status === "passed"
         ? "Đã vượt qua câu này"
         : "Đang trong sân"
     : "Chưa vào sân";
@@ -449,6 +477,15 @@ const GoldenBellRoom = ({ roomId }) => {
     toast("Bạn đã hạ bảng. Bạn vẫn có thể ở lại xem các câu hỏi tiếp theo.", { id: `golden-bell-elimination-${studentId}`, duration: 6000 });
   }, [currentStudent, isEliminated, roomId, studentId]);
 
+  const revealNoticeRef = useRef("");
+  useEffect(() => {
+    if (isAnswerPending || !hasSelected || !isCorrect || !room.answerRevealed) return;
+    const noticeKey = `${roomId}:${room.questionNo}`;
+    if (revealNoticeRef.current === noticeKey) return;
+    revealNoticeRef.current = noticeKey;
+    toast.success("Chính xác! Bạn được đi tiếp.");
+  }, [hasSelected, isAnswerPending, isCorrect, room.answerRevealed, room.questionNo, roomId]);
+
   const updateCurrentStudent = useCallback(
     (updater) => {
       const existingStudent = room.students.find((student) => student.id === studentId);
@@ -465,7 +502,8 @@ const GoldenBellRoom = ({ roomId }) => {
   );
 
   const handleSelectAnswer = (answer) => {
-    if (!answer || hasSelected) return;
+    if (!answer || (hasSelected && !canChangeAnswer)) return;
+    if (effectiveSelectedAnswer?.id === answer.id) return;
     if (socketStatus !== "connected") {
       toast.error("Chờ kết nối lại phòng thi trước khi trả lời.");
       return;
@@ -491,30 +529,23 @@ const GoldenBellRoom = ({ roomId }) => {
       return;
     }
 
+    const previousIsCorrect = hasSelected ? Boolean(effectiveSelectedAnswer.isCorrect) : null;
     setSelectedAnswer(answer);
+    updateCurrentStudent((student) => applyGoldenBellAnswer(student, {
+      questionNo,
+      answerId: answer.id,
+      isCorrect: Boolean(answer.isCorrect),
+      previousIsCorrect,
+    }));
 
-    if (answer.isCorrect) {
-      updateCurrentStudent((student) => ({
-        ...student,
-        status: "passed",
-        lastQuestionNo: questionNo,
-        correctCount: (student.correctCount || 0) + 1,
-      }));
+    if (isAnswerPending) {
+      toast(hasSelected ? "Đã đổi đáp án." : "Đã chọn đáp án. Bạn có thể đổi trước khi hết giờ.", { id: `golden-bell-answer-${studentId}` });
+    } else if (answer.isCorrect) {
       toast.success("Chính xác");
-    } else {
-      updateCurrentStudent((student) => ({
-        ...student,
-        status: "eliminated",
-        eliminatedReason: "wrong-answer",
-        eliminatedAt: new Date().toISOString(),
-        eliminatedQuestionNo: questionNo,
-        lastQuestionNo: questionNo,
-        wrongCount: (student.wrongCount || 0) + 1,
-      }));
     }
   };
 
-  const renderContent = (chain, emptyMessage = "Nội dung đang được cập nhật.") => {
+  const renderContent = (chain, emptyMessage = "Nội dung đang được cập nhật.", { imageClassName = "max-h-48 md:max-h-60", textClassName = "text-base md:text-lg font-medium leading-7" } = {}) => {
     if (!chain.length) {
       return <p className="text-gray-500">{emptyMessage}</p>;
     }
@@ -522,7 +553,7 @@ const GoldenBellRoom = ({ roomId }) => {
     return chain.map((item) => {
       if (item.contentType === "TEXT") {
         return (
-          <p key={item.id} className="text-base md:text-lg font-medium leading-7">
+          <p key={item.id} className={`whitespace-pre-line break-words ${textClassName}`}>
             {item.content}
           </p>
         );
@@ -534,7 +565,8 @@ const GoldenBellRoom = ({ roomId }) => {
             key={item.id}
             src={buildAssetUrl(item.content)}
             alt=""
-            className="my-3 max-w-full rounded-lg border border-gray-200 shadow-sm"
+            draggable={false}
+            className={`mx-auto my-1 block h-auto w-auto max-w-full select-none object-contain rounded-lg border border-gray-200 shadow-sm ${imageClassName}`}
           />
         );
       }
@@ -567,260 +599,258 @@ const GoldenBellRoom = ({ roomId }) => {
     );
   }
 
+  const isTimeLow = Boolean(question) && remainingSeconds <= 5;
+  const isAnswerLocked = (hasSelected && !canChangeAnswer) || isEliminated || isQuestionClosed || isWaitingForNextQuestion || socketStatus !== "connected";
+  const statusChipClass = displayedCurrentStudent?.status === "eliminated"
+    ? "bg-red-100 text-red-700"
+    : displayedCurrentStudent?.status === "passed"
+      ? "bg-green-100 text-green-700"
+      : "bg-yellow-100 text-yellow-800";
+
+  // Full-screen layout: top bar, question, answers and footer always fit the viewport,
+  // so students on a tablet see the whole question and every answer without scrolling.
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-green-50 via-gray-100 to-white">
+    <div className="flex h-[calc(100dvh-env(safe-area-inset-bottom))] flex-col overflow-hidden bg-gradient-to-b from-green-50 via-gray-100 to-white">
       <GoldenBellExamCelebration room={room} roomId={roomId} studentId={studentId} />
-      {connectionError && <div role="status" className="bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">{connectionError} Nội dung đang hiển thị là lần cập nhật gần nhất. <button type="button" onClick={() => retryConnectionRef.current?.()} className="font-bold underline">Kết nối lại</button></div>}
-      {room.status === "FINISHED" && <p role="status" className="bg-green-100 px-4 py-3 text-center font-bold text-green-800">Giáo viên đã kết thúc phòng thi. Bạn có thể xem lại kết quả và xếp hạng.</p>}
-      <div className="max-w-6xl mx-auto px-4 py-5 md:py-8">
-        <div className="mb-5 overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">
-          <div className="bg-green-700 px-5 py-4 text-white md:px-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
-                  aria-label="Quay lại"
-                >
-                  <ArrowLeft size={18} />
-                </button>
+      {connectionError && <div role="status" className="shrink-0 bg-amber-50 px-3 py-1.5 text-center text-xs text-amber-900 sm:text-sm">{connectionError} <button type="button" onClick={() => retryConnectionRef.current?.()} className="font-bold underline">Kết nối lại</button></div>}
+      {room.status === "FINISHED" && <p role="status" className="shrink-0 bg-green-100 px-3 py-1.5 text-center text-sm font-bold text-green-800">Giáo viên đã kết thúc phòng thi. Bạn có thể xem lại kết quả và xếp hạng.</p>}
 
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-green-50">
-                    <Bell size={18} />
-                    <span>Rung chuông vàng</span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        socketStatus === "connected"
-                          ? "bg-white text-green-700"
-                          : socketStatus === "connecting"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {socketStatus === "connected"
-                        ? "Socket online"
-                        : socketStatus === "connecting"
-                          ? "Đang kết nối"
-                          : "Mất kết nối"}
-                    </span>
-                  </div>
-                  <h1 className="mt-1 text-2xl font-normal md:text-3xl">
-                    Sân thi đấu - Câu {questionNo || 0}
-                  </h1>
-                </div>
-              </div>
+      <header className="flex shrink-0 items-center gap-2 bg-green-700 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-white sm:gap-3 sm:px-4">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 hover:bg-white/25"
+          aria-label="Quay lại"
+        >
+          <ArrowLeft size={18} />
+        </button>
 
-              <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-                <div className="rounded-lg bg-white/15 px-4 py-2">
-                  <p className="text-xs text-green-50">Đã join</p>
-                  <p className="text-xl font-black">{joinedCount}</p>
-                </div>
-                <div className="rounded-lg bg-white/15 px-4 py-2">
-                  <p className="text-xs text-green-50">Vượt qua</p>
-                  <p className="text-xl font-black text-yellow-200">{passedCount}</p>
-                </div>
-                <div className="rounded-lg bg-white/15 px-4 py-2">
-                  <p className="text-xs text-green-50">Bị loại</p>
-                  <p className="text-xl font-black text-red-200">{eliminatedCount}</p>
-                </div>
-                <div
-                  className={`rounded-lg px-4 py-2 ${
-                    question && remainingSeconds <= 5
-                      ? "bg-red-500/80"
-                      : "bg-white/15"
-                  }`}
-                >
-                  <p className="text-xs text-green-50">Thời gian</p>
-                  <p className="font-mono text-xl font-black text-white">
-                    {question
-                      ? `00:${String(remainingSeconds).padStart(2, "0")}`
-                      : "--:--"}
-                  </p>
-                </div>
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-green-50">
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${socketStatus === "connected" ? "bg-lime-300" : socketStatus === "connecting" ? "bg-yellow-300" : "bg-red-400"}`}
+              title={socketStatus === "connected" ? "Đã kết nối" : socketStatus === "connecting" ? "Đang kết nối" : "Mất kết nối"}
+            />
+            <span className="truncate">Phòng {room.code}</span>
+          </p>
+          <h1 className="text-lg font-black leading-tight sm:text-xl">Câu {questionNo || 0}</h1>
+        </div>
+
+        <div className="ml-auto flex min-w-0 items-center gap-2">
+          {currentStudent ? (
+            <div className={`flex min-w-0 items-center gap-2 rounded-full py-1 pl-1 pr-3 ${isCurrentStudentWinner ? "bg-yellow-300 text-gray-900" : "bg-white/15"}`}>
+              <StudentAvatar student={currentStudent} className="h-8 w-8 shrink-0" />
+              <div className="hidden min-w-0 sm:block">
+                <p className="max-w-40 truncate text-sm font-bold leading-tight">{currentStudent.name}</p>
+                {isCurrentStudentWinner
+                  ? <p className="text-[11px] font-bold leading-tight">Chiến thắng</p>
+                  : <p className={`mt-0.5 w-fit rounded-full px-1.5 text-[11px] font-bold leading-4 ${statusChipClass}`}>{studentStatusLabel}</p>}
               </div>
             </div>
+          ) : (
+            <span className="hidden truncate text-sm text-green-50 sm:inline">Đang vào sân…</span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsStudentListOpen(true)}
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 text-sm font-bold hover:bg-white/25"
+            aria-label="Xem sĩ tử trong sân"
+          >
+            <Users size={16} />
+            {joinedCount}
+          </button>
+
+          <div className={`flex h-10 min-w-16 shrink-0 items-center justify-center rounded-full px-3 font-mono text-xl font-black ${isTimeLow ? "animate-pulse bg-red-500" : "bg-white/15"}`} aria-label="Thời gian còn lại">
+            {question ? `00:${String(remainingSeconds).padStart(2, "0")}` : "--:--"}
           </div>
+        </div>
+      </header>
 
-          <div className="grid gap-4 p-5 md:grid-cols-[1fr_280px] md:p-6">
-            <div className="rounded-xl border border-green-100 bg-green-50 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-green-800">Mã phòng</p>
-                  <p className="text-3xl font-black tracking-wider text-gray-900">{room.code}</p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 text-yellow-700">
-                  <Trophy size={24} />
-                </div>
-              </div>
+      <main className="flex min-h-0 flex-1 flex-col gap-2 p-2 sm:gap-3 sm:p-3">
+        {!question ? (
+          <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white text-center shadow-sm">
+            <Bell className="mb-4 text-yellow-500" size={52} />
+            <p className="text-2xl font-normal text-gray-900">Chờ giáo viên phát câu hỏi</p>
+            <p className="mt-2 max-w-md px-4 text-sm text-gray-500">Khi giáo viên bấm phát câu, nội dung sẽ tự hiển thị tại đây.</p>
+          </div>
+        ) : (
+          <>
+            <section
+              translate="no"
+              className={`notranslate ${hasImageAnswers ? "max-h-[35%]" : "max-h-[45%]"} min-h-0 shrink overflow-y-auto rounded-2xl border border-green-200 bg-white px-4 py-3 text-gray-900 shadow-sm sm:px-6 sm:py-4`}
+            >
+              {renderContent(contentChain, undefined, {
+                imageClassName: hasImageAnswers ? "max-h-[20dvh]" : "max-h-[26dvh]",
+                textClassName: "text-lg font-semibold leading-snug sm:text-xl md:text-2xl",
+              })}
+            </section>
 
-              {currentStudent ? (
-                <div className={`rounded-lg border px-4 py-3 ${isCurrentStudentWinner ? "border-yellow-400 bg-gradient-to-b from-yellow-50 to-amber-100" : "border-green-200 bg-white"}`}>
-                  <p className="text-sm text-gray-600">Thí sinh</p>
-                  <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-                    <div className="flex w-32 max-w-full flex-col items-center gap-2 text-center">
-                      <StudentAvatar student={currentStudent} className="h-20 w-20" />
-                      <span className="w-full break-words font-bold text-gray-900">{currentStudent.name}</span>
-                    </div>
-                    {isCurrentStudentWinner ? <GoldenBellWinnerBadge /> : <span
-                      className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${
-                        currentStudent.status === "eliminated"
-                          ? "bg-red-100 text-red-700"
-                          : currentStudent.status === "passed"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {studentStatusLabel}
-                    </span>}
-                  </div>
-                </div>
+            <div className={`grid min-h-0 flex-1 auto-rows-fr gap-2 sm:grid-cols-2 sm:gap-3 ${hasImageAnswers ? "grid-cols-2" : "grid-cols-1"}`}>
+              {answers.length === 0 ? (
+                <p className="text-sm text-gray-500">Câu hỏi chưa có đáp án.</p>
               ) : (
-                <div className="rounded-lg border border-green-200 bg-white px-4 py-3">
-                  <p className="text-sm text-gray-500">Đang tự động vào sân</p>
-                  <p className="mt-1 font-bold text-gray-900">{studentName}</p>
-                </div>
+                answers.map((answer, index) => {
+                  const label = String.fromCharCode(65 + index);
+                  const answerChain = buildContentChain(answer);
+                  const answerImages = answerChain.filter((item) => item.contentType === "IMAGE");
+                  const answerExtras = answerChain.filter((item) => item.contentType !== "IMAGE");
+                  const isSelectedAnswer = effectiveSelectedAnswer?.id === answer.id;
+                  const showCorrect = showAnswerResult && answer.isCorrect;
+                  const showWrong = showAnswerResult && isSelectedAnswer && !answer.isCorrect;
+
+                  const answerClass = showCorrect
+                    ? "border-green-600 bg-green-50 ring-2 ring-green-500"
+                    : showWrong
+                      ? "border-red-500 bg-red-50 ring-2 ring-red-400"
+                      : isSelectedAnswer
+                        ? "border-yellow-500 bg-yellow-50 ring-2 ring-yellow-400"
+                        : "border-gray-200 bg-white enabled:hover:border-green-300 enabled:hover:bg-green-50 enabled:active:scale-[0.99]";
+                  const labelClass = showCorrect
+                    ? "border-green-600 bg-green-600 text-white"
+                    : showWrong
+                      ? "border-red-500 bg-red-500 text-white"
+                      : isSelectedAnswer
+                        ? "border-yellow-500 bg-yellow-400 text-gray-900"
+                        : "border-green-600 bg-green-50 text-green-700";
+
+                  // Answers with images: the image fills the whole button, label and result icon float on top.
+                  if (answerImages.length > 0) {
+                    return (
+                      <button
+                        key={answer.id}
+                        type="button"
+                        disabled={isAnswerLocked}
+                        aria-pressed={isSelectedAnswer}
+                        onClick={() => handleSelectAnswer(answer)}
+                        className={`relative flex h-full min-h-0 w-full touch-manipulation flex-col gap-1 overflow-hidden rounded-2xl border-2 p-1.5 text-left shadow-sm transition sm:p-2 ${answerClass}`}
+                      >
+                        <span translate="no" lang="en" className={`absolute left-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 text-base font-black shadow-md sm:h-11 sm:w-11 sm:text-lg ${labelClass}`}>
+                          {label}
+                        </span>
+                        {showCorrect && <CheckCircle2 className="absolute right-2 top-2 z-10 rounded-full bg-white text-green-600 shadow-md" size={30} />}
+                        {showWrong && <XCircle className="absolute right-2 top-2 z-10 rounded-full bg-white text-red-500 shadow-md" size={30} />}
+                        <div className="flex min-h-0 w-full flex-1 gap-1.5">
+                          {answerImages.map((item) => (
+                            <div key={item.id} className="relative min-h-0 min-w-0 flex-1">
+                              <img
+                                src={buildAssetUrl(item.content)}
+                                alt=""
+                                draggable={false}
+                                className="absolute inset-0 h-full w-full select-none rounded-xl object-contain"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        {answerExtras.length > 0 && (
+                          <div translate="no" className="notranslate max-h-[35%] min-h-0 shrink-0 overflow-y-auto px-1 text-center text-gray-900">
+                            {renderContent(answerExtras, undefined, {
+                              textClassName: "text-sm font-bold leading-snug sm:text-base md:text-lg",
+                            })}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={answer.id}
+                      type="button"
+                      disabled={isAnswerLocked}
+                      aria-pressed={isSelectedAnswer}
+                      onClick={() => handleSelectAnswer(answer)}
+                      className={`flex h-full min-h-0 w-full touch-manipulation items-center gap-3 overflow-hidden rounded-2xl border-2 px-3 py-2 text-left shadow-sm transition sm:px-4 ${answerClass}`}
+                    >
+                      <span translate="no" lang="en" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-lg font-black sm:h-12 sm:w-12 sm:text-xl ${labelClass}`}>
+                        {label}
+                      </span>
+                      <div translate="no" className="notranslate max-h-full min-w-0 flex-1 overflow-y-auto text-gray-900">
+                        {renderContent(answerChain, "Đáp án chưa có nội dung.", {
+                          textClassName: "text-base font-bold leading-snug sm:text-lg md:text-xl",
+                        })}
+                      </div>
+                      {showCorrect && <CheckCircle2 className="shrink-0 text-green-600" size={26} />}
+                      {showWrong && <XCircle className="shrink-0 text-red-500" size={26} />}
+                    </button>
+                  );
+                })
               )}
             </div>
+          </>
+        )}
+      </main>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Users size={18} className="text-green-700" />
-                <h2 className="font-bold text-gray-900">Sĩ tử trong sân</h2>
-              </div>
-              <div className="max-h-36 space-y-2 overflow-y-auto pr-1">
-                {room.students.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-gray-500">Chưa có học sinh join.</p>
-                ) : (
-                  room.students.map((student) => (
-                    <div
-                      key={student.id}
-                      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${winner?.id === student.id ? "border-yellow-400 bg-yellow-50" : "border-gray-200"}`}
-                    >
+      <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white px-3 py-2 sm:px-4">
+        <div className="min-w-0 text-sm font-semibold">
+          {isEliminated ? (
+            <p className="flex items-center gap-1.5 text-red-700"><XCircle size={18} className="shrink-0" />Bạn đã hạ bảng. Bạn vẫn có thể xem các câu tiếp theo.</p>
+          ) : isWaitingForNextQuestion ? (
+            <p className="text-green-700">Bạn đã được hồi sinh. Chờ câu tiếp theo để tiếp tục thi đấu.</p>
+          ) : hasSelected && isAnswerPending ? (
+            <p className="flex items-center gap-1.5 text-yellow-800">
+              <CheckCircle2 size={18} className="shrink-0" />
+              {canChangeAnswer
+                ? `Đã chọn đáp án${selectedAnswerIndex >= 0 ? ` ${String.fromCharCode(65 + selectedAnswerIndex)}` : ""}. Có thể chọn lại trước khi hết giờ.`
+                : "Đã chốt đáp án. Chờ giáo viên công bố."}
+            </p>
+          ) : hasSelected ? (
+            <p className={`flex items-center gap-1.5 ${isCorrect ? "text-green-700" : "text-red-700"}`}>
+              {isCorrect ? <CheckCircle2 size={18} className="shrink-0" /> : <XCircle size={18} className="shrink-0" />}
+              {isCorrect ? "Bạn được đi tiếp" : "Bạn đã trả lời sai"}
+            </p>
+          ) : (
+            <p className="text-gray-500">{question ? "Chạm vào một đáp án để trả lời." : "Chọn đáp án sau khi giáo viên phát câu hỏi."}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button type="button" onClick={() => openGoldenBellRanking(navigate, room, `/golden-bell/${roomId}`)} className="flex items-center gap-1 rounded-xl border border-green-700 px-3 py-1.5 text-sm font-bold text-green-700 hover:bg-green-50"><Trophy size={16} /><span className="hidden sm:inline">Xếp hạng</span></button>
+          <button type="button" onClick={() => navigate("/")} className="rounded-xl bg-green-700 px-3 py-1.5 text-sm font-bold text-white hover:bg-green-800">Trang chủ</button>
+        </div>
+      </footer>
+
+      {isStudentListOpen && (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/40" onClick={() => setIsStudentListOpen(false)}>
+          <aside
+            role="dialog"
+            aria-label="Sĩ tử trong sân"
+            className="flex h-full w-80 max-w-[85vw] flex-col bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+              <h2 className="flex items-center gap-2 font-bold text-gray-900"><Users size={18} className="text-green-700" />Sĩ tử trong sân</h2>
+              <button type="button" onClick={() => setIsStudentListOpen(false)} className="rounded-full p-1.5 text-gray-500 hover:bg-gray-100" aria-label="Đóng"><X size={18} /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 border-b border-gray-200 p-3 text-center">
+              <div className="rounded-lg bg-gray-50 py-1.5"><p className="text-[11px] text-gray-500">Đã join</p><p className="text-lg font-black text-gray-900">{joinedCount}</p></div>
+              <div className="rounded-lg bg-green-50 py-1.5"><p className="text-[11px] text-green-700">Vượt qua</p><p className="text-lg font-black text-green-700">{passedCount}</p></div>
+              <div className="rounded-lg bg-red-50 py-1.5"><p className="text-[11px] text-red-600">Bị loại</p><p className="text-lg font-black text-red-600">{eliminatedCount}</p></div>
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+              {displayedStudents.length === 0 ? (
+                <p className="py-4 text-center text-sm text-gray-500">Chưa có học sinh join.</p>
+              ) : (
+                displayedStudents.map((student) => {
+                  const isWinner = winner?.id === student.id;
+                  const isWaiting = isWaitingAfterGoldenBellRevival(student, room.questionNo);
+                  return (
+                    <div key={student.id} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${isWinner ? "border-yellow-400 bg-yellow-50" : student.id === studentId ? "border-green-300 bg-green-50" : "border-gray-200"}`}>
                       <div className="flex min-w-0 items-center gap-2">
                         <StudentAvatar student={student} className="h-9 w-9" />
-                        {winner?.id === student.id && <GoldenBellWinnerBadge iconOnly />}
-                        <span className="truncate text-sm font-semibold text-gray-800">
-                          {student.name}
-                        </span>
+                        {isWinner && <GoldenBellWinnerBadge iconOnly />}
+                        <span className="truncate text-sm font-semibold text-gray-800">{student.name}</span>
                       </div>
-                      <span
-                        className={`text-xs font-bold ${
-                          winner?.id === student.id ? "text-amber-800" : isWaitingAfterGoldenBellRevival(student, room.questionNo) ? "text-blue-700" : student.status === "passed"
-                            ? "text-green-700"
-                            : student.status === "eliminated"
-                              ? "text-red-600"
-                              : "text-gray-500"
-                        }`}
-                      >
-                        {winner?.id === student.id ? "Chiến thắng" : isWaitingAfterGoldenBellRevival(student, room.questionNo) ? "Đã hồi sinh · Chờ câu tiếp theo" : student.status === "passed"
-                          ? "Qua"
-                          : student.status === "eliminated"
-                            ? "Hạ bảng"
-                            : "Đang thi"}
+                      <span className={`shrink-0 text-xs font-bold ${isWinner ? "text-amber-800" : isWaiting ? "text-blue-700" : student.status === "passed" ? "text-green-700" : student.status === "eliminated" ? "text-red-600" : "text-gray-500"}`}>
+                        {isWinner ? "Chiến thắng" : isWaiting ? "Chờ câu tiếp" : student.status === "passed" ? "Qua" : student.status === "eliminated" ? "Hạ bảng" : "Đang thi"}
                       </span>
                     </div>
-                  ))
-                )}
-              </div>
+                  );
+                })
+              )}
             </div>
-          </div>
+          </aside>
         </div>
-
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-200 bg-white p-5 md:p-8">
-            {!question ? (
-              <div className="flex min-h-72 flex-col items-center justify-center text-center">
-                <Bell className="mb-4 text-yellow-500" size={52} />
-                <p className="text-2xl font-normal text-gray-900">Chờ giáo viên phát câu hỏi</p>
-                <p className="mt-2 max-w-md text-sm text-gray-500">
-                  Khi giáo viên bấm phát câu, nội dung sẽ tự hiển thị tại đây.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-7">
-                <div className="rounded-xl border border-green-100 bg-green-50 p-5 md:p-6">
-                  <div className="mb-3 inline-flex rounded-md bg-yellow-400 px-3 py-1 text-xs font-normal uppercase tracking-wide text-gray-900">
-                    Câu hỏi hiện tại
-                  </div>
-                  <div translate="no" className="notranslate space-y-4 text-xl font-normal leading-8 text-gray-900 md:text-2xl">
-                    {renderContent(contentChain)}
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  {answers.length === 0 ? (
-                    <p className="text-sm text-gray-500">Câu hỏi chưa có đáp án.</p>
-                  ) : (
-                    answers.map((answer, index) => {
-                      const label = String.fromCharCode(65 + index);
-                      const isSelectedAnswer = selectedAnswer?.id === answer.id;
-                      const showCorrect = hasSelected && answer.isCorrect;
-                      const showWrong = hasSelected && isSelectedAnswer && !answer.isCorrect;
-
-                      const answerClass = showCorrect
-                        ? "border-green-600 bg-green-50 shadow-green-100"
-                        : showWrong
-                          ? "border-red-500 bg-red-50 shadow-red-100"
-                          : isSelectedAnswer
-                            ? "border-yellow-500 bg-yellow-50 shadow-yellow-100"
-                            : "border-gray-200 bg-white hover:border-green-300 hover:bg-green-50";
-
-                      return (
-                        <button
-                          key={answer.id}
-                          type="button"
-                          disabled={hasSelected || isEliminated || isQuestionClosed || isWaitingForNextQuestion || (socketStatus !== "connected")}
-                          onClick={() => handleSelectAnswer(answer)}
-                          className={`min-h-24 w-full rounded-xl border p-4 text-left shadow-sm transition ${answerClass}`}
-                        >
-                          <div className="flex items-start gap-4">
-                            <span translate="no" lang="en" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-green-600 bg-green-50 font-black text-green-700">
-                              {label}
-                            </span>
-                            <div translate="no" className="notranslate flex-1 space-y-2 text-base font-bold text-gray-900">
-                              {renderContent(buildContentChain(answer), "Đáp án chưa có nội dung.")}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-5 py-4">
-            {isEliminated ? (
-              <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
-                <XCircle size={18} />
-                Bạn đã hạ bảng và không thể trả lời. Bạn vẫn có thể ở lại xem các câu hỏi tiếp theo.
-              </div>
-            ) : isWaitingForNextQuestion ? (
-              <p className="text-sm font-semibold text-green-700">Bạn đã được hồi sinh. Chờ giáo viên phát câu tiếp theo để tiếp tục thi đấu.</p>
-            ) : hasSelected ? (
-              <div
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
-                  isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                }`}
-              >
-                {isCorrect ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-                {isCorrect ? "Bạn được đi tiếp" : "Bạn đã trả lời sai"}
-              </div>
-            ) : (
-              <p className="text-sm font-medium text-gray-500">
-                Chọn một đáp án sau khi giáo viên phát câu hỏi.
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => navigate("/")} className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800">Trở về trang chủ</button>
-              <button type="button" onClick={() => openGoldenBellRanking(navigate, room, `/golden-bell/${roomId}`)} className="rounded-xl border border-green-700 px-4 py-2 text-sm font-bold text-green-700 hover:bg-green-50">Xếp hạng</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

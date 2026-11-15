@@ -16,8 +16,14 @@ import {
   buildContentChain,
   getQuestionAnswerOptions,
 } from "../utils/questionContent";
+import {
+  GOLDEN_BELL_QUESTION_SECONDS,
+  getDisplayedGoldenBellStudents,
+  isGoldenBellAnswerRevealed,
+  requireGoldenBellAnswerReveal,
+} from "../utils/goldenBellAnswerReveal";
 
-const QUESTION_SECONDS = 15;
+const QUESTION_SECONDS = GOLDEN_BELL_QUESTION_SECONDS;
 
 const getRemainingSeconds = (room) => {
   if (!room?.currentQuestion || room.questionEndedAt) return 0;
@@ -55,11 +61,16 @@ const GoldenBellArena = () => {
   const [remainingSeconds, setRemainingSeconds] = useState(QUESTION_SECONDS);
   const socketRef = useRef(null);
 
-  const students = useMemo(() => toArray(room.students), [room.students]);
+  // The arena reveals the answer and the current question's results only when the teacher presses the reveal button.
+  const revealRoom = useMemo(
+    () => requireGoldenBellAnswerReveal({ ...room, students: toArray(room.students) }),
+    [room]
+  );
+  const students = useMemo(() => getDisplayedGoldenBellStudents(revealRoom), [revealRoom]);
   const seating = useGoldenBellSeating(roomId);
   const seatedStudents = useMemo(() => orderSeatedStudents(students, seating), [students, seating]);
   const ranking = useMemo(() => getGoldenBellRanking(room), [room]);
-  const winner = room.status === "FINISHED" ? ranking.find((student) => student.isWinner) : getGoldenBellWinner(room);
+  const winner = room.status === "FINISHED" ? ranking.find((student) => student.isWinner) : getGoldenBellWinner(revealRoom);
   const activeCount = students.filter(
     (student) => student.status !== "eliminated"
   ).length;
@@ -77,7 +88,7 @@ const GoldenBellArena = () => {
   const questionStartedAt = room.questionStartedAt;
   const questionDurationSeconds = room.questionDurationSeconds;
   const questionEndedAt = room.questionEndedAt;
-  const isTimeUp = Boolean(room.currentQuestion) && remainingSeconds <= 0;
+  const showAnswer = isGoldenBellAnswerRevealed(revealRoom);
   useEffect(() => {
     const socket = createAppSocket();
     socketRef.current = socket;
@@ -300,7 +311,7 @@ const GoldenBellArena = () => {
 
                 <div className={`arena-answers ${answers.length > 2 ? "arena-answers--multiple" : ""}`}>
                   {answers.map((answer, index) => {
-                    const showCorrectAnswer = isTimeUp && answer.isCorrect;
+                    const showCorrectAnswer = showAnswer && answer.isCorrect;
                     const answerContent = buildContentChain(answer);
                     const answerImages = answerContent.filter((item) => item.contentType === "IMAGE");
 

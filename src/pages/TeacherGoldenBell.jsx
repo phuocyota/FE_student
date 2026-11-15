@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Copy,
+  Eye,
   ExternalLink,
   LayoutGrid,
   Loader2,
@@ -37,6 +38,12 @@ import { openGoldenBellRanking, podiumSelectionsKey, withEliminationHistory } fr
 import { reviveGoldenBellStudentOnServer } from "../api/goldenBell";
 import { isWaitingAfterGoldenBellRevival } from "../utils/goldenBellRevival";
 import useGoldenBellWinnerCompletion from "../hooks/useGoldenBellWinnerCompletion";
+import {
+  GOLDEN_BELL_QUESTION_SECONDS,
+  isGoldenBellAnswerPending,
+  isGoldenBellAnswerRevealed,
+  revealGoldenBellAnswer,
+} from "../utils/goldenBellAnswerReveal";
 import {
   buildContentChain,
   getQuestionAnswerOptions,
@@ -132,6 +139,7 @@ const TeacherGoldenBell = () => {
   const [isQuestionBankMenuOpen, setIsQuestionBankMenuOpen] = useState(false);
   const [isLoadingQuestionBanks, setIsLoadingQuestionBanks] = useState(false);
   const [questionBankSearch, setQuestionBankSearch] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isEndingRoom, setIsEndingRoom] = useState(false);
@@ -161,6 +169,19 @@ const TeacherGoldenBell = () => {
   const answers = useMemo(() => {
     return getQuestionAnswerOptions(room.currentQuestion);
   }, [room.currentQuestion]);
+
+  const filteredStudents = useMemo(() => {
+    const keyword = studentSearch.trim().toLocaleLowerCase("vi");
+    if (!keyword) return students;
+
+    return students.filter((student) =>
+      [student.name, student.fullName, student.className, student.schoolName]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase("vi").includes(keyword))
+    );
+  }, [students, studentSearch]);
+  const isAnswerRevealed = isGoldenBellAnswerRevealed(room);
+  const isAnswerPending = isGoldenBellAnswerPending(room);
 
   const isAuthenticated = Boolean(teacher.token);
   const winner = getGoldenBellWinner(room);
@@ -409,6 +430,26 @@ const TeacherGoldenBell = () => {
         usedQuestionIds: toArray(nextRoom.usedQuestionIds),
       };
 
+      const previousRoom = roomRef.current;
+      const lostReveal =
+        previousRoom?.answerRevealed === true &&
+        normalizedRoom.answerRevealed === false &&
+        previousRoom.currentQuestion?.id &&
+        previousRoom.currentQuestion.id === normalizedRoom.currentQuestion?.id;
+
+      if (lostReveal) {
+        // A student's stale sync arrived after the reveal; publish the reveal again.
+        const revealedRoom = revealGoldenBellAnswer({
+          ...normalizedRoom,
+          answerRevealedAt: previousRoom.answerRevealedAt,
+          questionEndedAt: normalizedRoom.questionEndedAt || previousRoom.questionEndedAt,
+        });
+        roomRef.current = revealedRoom;
+        setRoom(revealedRoom);
+        socket.emit("golden-bell:sync", { roomId, room: revealedRoom });
+        return;
+      }
+
       roomRef.current = normalizedRoom;
       setRoom(normalizedRoom);
     };
@@ -575,8 +616,10 @@ const TeacherGoldenBell = () => {
         currentQuestion: nextQuestion,
         questionNo: reset ? 1 : (currentRoom.questionNo || 0) + 1,
         questionStartedAt: new Date().toISOString(),
-        questionDurationSeconds: 15,
+        questionDurationSeconds: GOLDEN_BELL_QUESTION_SECONDS,
         questionEndedAt: null,
+        answerRevealed: false,
+        answerRevealedAt: null,
         usedQuestionIds: reset
           ? [nextQuestion.id]
           : [...currentUsedIds, nextQuestion.id],
@@ -619,6 +662,16 @@ const TeacherGoldenBell = () => {
     });
     setIsOutOfQuestions(false);
     toast.success("Đã reset phòng");
+  };
+
+  const handleRevealAnswer = () => {
+    if (!roomRef.current?.currentQuestion || isGoldenBellAnswerRevealed(roomRef.current)) return;
+    if (!socketRef.current?.connected) {
+      toast.error("Cần kết nối phòng để hiện đáp án.");
+      return;
+    }
+    syncRoom(revealGoldenBellAnswer(roomRef.current));
+    toast.success("Đã hiện đáp án cho học sinh và sân thi đấu");
   };
 
   const handleReviveStudent = async (studentId) => {
@@ -1051,6 +1104,15 @@ const TeacherGoldenBell = () => {
                   </button>
                   <button
                     type="button"
+                    onClick={handleRevealAnswer}
+                    disabled={!roomId || !isAnswerPending || isRoomFinished || socketStatus !== "connected"}
+                    className="inline-flex items-center gap-2 rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60"
+                  >
+                    <Eye size={16} />
+                    {isAnswerRevealed ? "Đã hiện đáp án" : "Hiện đáp án"}
+                  </button>
+                  <button
+                    type="button"
                     disabled={!roomId || isLoadingQuestion || isRoomFinished || Boolean(revivingStudentId) || Boolean(getGoldenBellWinner(room))}
                     onClick={() => fetchQuestion()}
                     className="inline-flex items-center gap-2 rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700 disabled:opacity-60"
@@ -1060,6 +1122,12 @@ const TeacherGoldenBell = () => {
                   </button>
                 </div>
               </div>
+
+              {isAnswerPending && (
+                <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                  Học sinh và sân thi đấu chưa thấy đáp án đúng. Bấm “Hiện đáp án” để công bố (học sinh sẽ không thể đổi đáp án nữa).
+                </div>
+              )}
 
               {isOutOfQuestions && (
                 <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
@@ -1118,18 +1186,35 @@ const TeacherGoldenBell = () => {
             </div>
 
             <div className="rounded-lg border border-gray-200 bg-white">
-              <div className="flex items-center gap-2 border-b border-gray-200 p-4">
-                <Users size={18} className="text-yellow-700" />
-                <h2 className="font-semibold text-gray-900">Học sinh</h2>
+              <div className="space-y-3 border-b border-gray-200 p-4">
+                <div className="flex items-center gap-2">
+                  <Users size={18} className="text-yellow-700" />
+                  <h2 className="font-semibold text-gray-900">Học sinh</h2>
+                </div>
+                <label className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-green-600 focus-within:ring-2 focus-within:ring-green-100">
+                  <Search size={16} className="shrink-0 text-gray-400" aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={studentSearch}
+                    onChange={(event) => setStudentSearch(event.target.value)}
+                    placeholder="Tìm theo tên học sinh..."
+                    aria-label="Tìm học sinh theo tên"
+                    className="w-full min-w-0 bg-transparent text-sm text-gray-900 outline-none"
+                  />
+                </label>
               </div>
               <div className="max-h-[520px] overflow-y-auto p-3">
                 {students.length === 0 ? (
                   <p className="py-8 text-center text-sm text-gray-500">
                     Chưa có học sinh join.
                   </p>
+                ) : filteredStudents.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-gray-500">
+                    Không tìm thấy học sinh phù hợp.
+                  </p>
                 ) : (
                   <div className="space-y-2">
-                    {students.map((student) => (
+                    {filteredStudents.map((student) => (
                       <div
                         key={student.id}
                         className={`rounded-lg border p-3 ${winner?.id === student.id ? "border-yellow-400 bg-gradient-to-b from-yellow-50 to-amber-100" : "border-gray-200"}`}

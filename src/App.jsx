@@ -34,6 +34,8 @@ const App = () => {
   const shouldHideHeader =
     hideHeaderRoutes.includes(location.pathname) ||
     location.pathname.startsWith("/golden-bell-arena") ||
+    // Student game room uses the full screen so the question and all answers fit without scrolling.
+    /^\/golden-bell\/[^/]+/.test(location.pathname) ||
     location.pathname.startsWith("/teacher");
 
   return (
